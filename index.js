@@ -70,7 +70,8 @@ app.get(shardUrlRegex, async (req, res) => {
   })
 
   let versions = await Promise.all(promises)
-  res.setHeader('etag', response.headers['etag'])
+  res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+  res.setHeader('ETag', response.headers['etag'])
   res.send(versions.join('\n'))
 })
 
