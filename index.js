@@ -76,6 +76,7 @@ function redir(req, res) {
 app.get('/CocoaPods-version.yml', redir)
 app.get(/\/Specs\/.*\.podspec.json/, redir)
 app.get('/deprecated_podspecs.txt', (req, res) => res.redirect(301, 'https://cdn.cocoapods.org/deprecated_podspecs.txt'))
+app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
 
