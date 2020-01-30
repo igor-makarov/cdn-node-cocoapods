@@ -16,7 +16,7 @@ if (!port) {
 }
 
 const httpRequestCache = new RequestHttpCache({
-  max: 4 * 1024 * 1024
+  max: 300 * 1024 * 1024
 });
 
 const requestFunc = requestExt({
@@ -75,15 +75,16 @@ app.get(shardUrlRegex, async (req, res) => {
   res.send(versions.join('\n'))
 })
 
-function redir(req, res) {
-  res.redirect(301, `https://raw.githubusercontent.com/CocoaPods/Specs/master/${req.url}`)
-}
-
-const ghProxy = proxy({ target: 'https://raw.githubusercontent.com/CocoaPods/Specs/master/', changeOrigin: true })
+const ghProxy = proxy({ target: 'https://raw.githubusercontent.com/CocoaPods/Specs/master/', 
+                        changeOrigin: true,
+                        onProxyRes: (proxyRes, req, res) => {
+                          proxyRes.headers['Cache-Control'] = 'public,max-age=14400,s-max-age=14400'
+                        }
+                      })
 
 app.use('/CocoaPods-version.yml', ghProxy)
 app.use('//CocoaPods-version.yml', ghProxy)
-app.get(/\/Specs\/.*\.podspec.json/, redir)
+app.get(/\/Specs\/.*\.podspec.json/, ghProxy)
 app.get('/deprecated_podspecs.txt', (req, res) => res.redirect(301, 'https://cdn.cocoapods.org/deprecated_podspecs.txt'))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
