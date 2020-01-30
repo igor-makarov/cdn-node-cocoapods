@@ -1,7 +1,8 @@
 const requestExt = require('request-extensible')
 const RequestHttpCache = require('request-http-cache')
 const express = require('express')
-const pify = require('pify');
+const pify = require('pify')
+const proxy = require('http-proxy-middleware')
 
 const token = process.env['GH_TOKEN']
 const port = process.env['PORT']
@@ -17,7 +18,7 @@ const httpRequestCache = new RequestHttpCache({
   max: 4 * 1024 * 1024
 });
 
-const request = pify(requestExt({
+const requestFunc = requestExt({
   extensions: [
     function (options, callback, next) {
       /* Add a user-agent header */
@@ -29,7 +30,8 @@ const request = pify(requestExt({
     },
     httpRequestCache.extension
   ]
-}), { multiArgs: true })
+})
+const request = pify(requestFunc, { multiArgs: true })
 
 const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs/contents'
 
@@ -54,7 +56,7 @@ app.get(shardUrlRegex, async (req, res) => {
     res.sendStatus(304)
     return
   }
-
+  console.log(response.headers)
   const pods = JSON.parse(body).map(entry => entry.name)
 
   let promises = pods.map( async (pod) => {
@@ -73,16 +75,11 @@ function redir(req, res) {
   res.redirect(301, `https://raw.githubusercontent.com/CocoaPods/Specs/master/${req.url}`)
 }
 
-app.get('/CocoaPods-version.yml', redir)
+const ghProxy = proxy({ target: 'https://raw.githubusercontent.com/CocoaPods/Specs/master/', changeOrigin: true })
+
+app.use('/CocoaPods-version.yml', ghProxy)
+app.use('//CocoaPods-version.yml', ghProxy)
 app.get(/\/Specs\/.*\.podspec.json/, redir)
 app.get('/deprecated_podspecs.txt', (req, res) => res.redirect(301, 'https://cdn.cocoapods.org/deprecated_podspecs.txt'))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
-
-
-// // Now use request as you would request/request
-// request({
-//     url: 'https://api.github.com/users/suprememoocow'
-// }, function (err, response, body) {
-
-// });
