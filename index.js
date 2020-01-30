@@ -3,6 +3,7 @@ const RequestHttpCache = require('request-http-cache')
 const express = require('express')
 const pify = require('pify')
 const proxy = require('http-proxy-middleware')
+const compression = require('compression')
 
 const token = process.env['GH_TOKEN']
 const port = process.env['PORT']
@@ -40,6 +41,8 @@ async function getPodNames(shard) {
 }
 
 const app = express()
+app.use(compression({threshold: 0 }))
+
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res) => {
   let shard = shardUrlRegex.exec(req.url).slice(1)
