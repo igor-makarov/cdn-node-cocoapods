@@ -34,42 +34,54 @@ const requestFunc = requestExt({
 })
 const request = pify(requestFunc, { multiArgs: true })
 
-const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs/contents'
-
-async function getPodNames(shard) {
-  const ghUrl = `${ghUrlPrefix}/Specs/${shard.join('/')}`
-}
+const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
 const app = express()
 app.use(compression({threshold: 0 }))
 
+Array.prototype.grouped = function() {
+  return this.reduce(function(groups, item) {
+    const val = item.name
+    groups[val] = groups[val] || []
+    groups[val].push(item.version)
+    return groups
+  }, {})
+}
+
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res) => {
-  let shard = shardUrlRegex.exec(req.url).slice(1)
-  let shardUrl = `${ghUrlPrefix}/Specs/${shard.join('/')}`
+  let shardList = shardUrlRegex.exec(req.url).slice(1)
+  let prefix = shardList.slice(0, -1)
+  let suffix = shardList.pop()
+  let shardSHAUrl = `${ghUrlPrefix}/contents/Specs/${prefix.join('/')}`
+  let [, bodySHA] = await request({ url: shardSHAUrl })
+
+  let shardSHA = JSON.parse(bodySHA).find(s => s.name === suffix)
+  // console.log(shardSHA)
+  let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
+
   let ghIndexRequest = { url: shardUrl }
   if (req.headers['if-none-match']) {
+    // console.log(req.headers['if-none-match'])
     ghIndexRequest.headers = {
       'if-none-match': req.headers['if-none-match']
     }
   }
   let [response, body] = await request(ghIndexRequest)
 
-  if (response.statusCode == 304) {
+  // console.log(response.headers)
+  if (response.statusCode == 304 || response.headers['etag'] == req.headers['if-none-match']) {
     res.sendStatus(304)
     return
   }
-  console.log(response.headers)
-  const pods = JSON.parse(body).map(entry => entry.name)
+  console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
+  const pods = JSON.parse(body).tree
+    .map(entry => entry.path.split('/'))
+    .filter(p => p.length == 2)
+    .map(([n, v]) => { return { name: n, version: v} })
 
-  let promises = pods.map( async (pod) => {
-    let podUrl = `${ghUrlPrefix}/Specs/${shard.join('/')}/${pod}`
-    let [, body] = await request({ url: podUrl })
-    let parsed = JSON.parse(body).map(entry => entry.name)
-    return [pod, ...parsed].join('/')
-  })
+  let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
 
-  let versions = await Promise.all(promises)
   res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
   res.setHeader('ETag', response.headers['etag'])
   res.send(versions.join('\n'))
