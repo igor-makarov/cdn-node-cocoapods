@@ -81,6 +81,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     // console.log(response.headers)
     if (response.statusCode == 304 || response.headers['etag'] == req.headers['if-none-match']) {
+      res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+      res.setHeader('ETag', response.headers['etag'])
       res.sendStatus(304)
       return
     }
