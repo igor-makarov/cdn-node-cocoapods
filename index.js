@@ -39,6 +39,7 @@ const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
 const app = express()
 app.use(compression({threshold: 0 }))
+app.set('etag', false)
 
 Array.prototype.grouped = function() {
   return this.reduce(function(groups, item) {
@@ -70,6 +71,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     if (responseSha.statusCode != 200) {
       printRateLimit(responseSha)
+      res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
       return
     }
@@ -96,6 +98,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     printRateLimit(response)
     if (response.statusCode != 200) {
+      res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
       return
     }
