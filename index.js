@@ -49,42 +49,57 @@ Array.prototype.grouped = function() {
 }
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
-app.get(shardUrlRegex, async (req, res) => {
-  let shardList = shardUrlRegex.exec(req.url).slice(1)
-  let prefix = shardList.slice(0, -1)
-  let suffix = shardList.pop()
-  let shardSHAUrl = `${ghUrlPrefix}/contents/Specs/${prefix.join('/')}`
-  let [, bodySHA] = await request({ url: shardSHAUrl })
+app.get(shardUrlRegex, async (req, res, next) => {
+  try {
+    let shardList = shardUrlRegex.exec(req.url).slice(1)
+    let prefix = shardList.slice(0, -1)
+    let suffix = shardList.pop()
+    let shardSHAUrl = `${ghUrlPrefix}/contents/Specs/${prefix.join('/')}`
+    let [responseSha, bodySHA] = await request({ url: shardSHAUrl, family: 4 })
 
-  let shardSHA = JSON.parse(bodySHA).find(s => s.name === suffix)
-  // console.log(shardSHA)
-  let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
-
-  let ghIndexRequest = { url: shardUrl }
-  if (req.headers['if-none-match']) {
-    // console.log(req.headers['if-none-match'])
-    ghIndexRequest.headers = {
-      'if-none-match': req.headers['if-none-match']
+    if (responseSha.statusCode != 200) {
+      res.sendStatus(403)
+      return
     }
+    let shardSHA = JSON.parse(bodySHA).find(s => s.name === suffix)
+    // console.log(shardSHA)
+    let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
+
+    let ghIndexRequest = { url: shardUrl, family: 4 }
+    if (req.headers['if-none-match']) {
+      // console.log(req.headers['if-none-match'])
+      ghIndexRequest.headers = {
+        'if-none-match': req.headers['if-none-match']
+      }
+    }
+    let [response, body] = await request(ghIndexRequest)
+
+    // console.log(response.headers)
+    if (response.statusCode == 304 || response.headers['etag'] == req.headers['if-none-match']) {
+      res.sendStatus(304)
+      return
+    }
+
+    if (response.statusCode != 200) {
+      res.sendStatus(403)
+      return
+    }
+    console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
+    // console.log(body)
+    const pods = JSON.parse(body).tree
+      .map(entry => entry.path.split('/'))
+      .filter(p => p.length == 2)
+      .map(([n, v]) => { return { name: n, version: v} })
+
+    let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
+
+    res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+    res.setHeader('ETag', response.headers['etag'])
+    res.send(versions.join('\n'))
+  } catch (error) {
+    console.log(error)
+    next(error)
   }
-  let [response, body] = await request(ghIndexRequest)
-
-  // console.log(response.headers)
-  if (response.statusCode == 304 || response.headers['etag'] == req.headers['if-none-match']) {
-    res.sendStatus(304)
-    return
-  }
-  console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
-  const pods = JSON.parse(body).tree
-    .map(entry => entry.path.split('/'))
-    .filter(p => p.length == 2)
-    .map(([n, v]) => { return { name: n, version: v} })
-
-  let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
-
-  res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
-  res.setHeader('ETag', response.headers['etag'])
-  res.send(versions.join('\n'))
 })
 
 function proxyTo(url, maxAge = 14400) {
