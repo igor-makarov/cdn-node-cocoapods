@@ -31,7 +31,11 @@ let withAddedHeaders = requestExt({
 
 let bottleneck = (args) => new Bottleneck(args)
 
-let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(withAddedHeaders)
+let cached = new ETagRequest({
+  max: 300 * 1024 * 1024
+}, withAddedHeaders);
+
+let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(cached)
 
 const request = pify(rateLimited, { multiArgs: true })
 
@@ -59,75 +63,47 @@ function printRateLimit(response) {
   }
 }
 
-let githubGetPrefixSHA = function() {
-  var shards = null
-  var shardsEtag = null
-  return async prefix => {
-    let requestSHA = { url: `${ghUrlPrefix}/contents/Specs`, family: 4 }
-    if (shardsEtag) {
-      requestSHA.headers = { 'if-none-match': shardsEtag }
-    }
-    let [response, body] = await request(requestSHA)
-    printRateLimit(response)
-    if (response.statusCode == 200) {
-      shards = JSON.parse(body)
-      shardsEtag = response.headers['etag']
-      console.log('shards modified')
-    } else if (response.statusCode == 304) {
-      // nothing
-      console.log('shards not modified')
-    } else {
-      throw new Error(response)
-    }
-    return shards.find(s => s.name === prefix).sha
-  }
-}()
-
-let githubGetShard = function() {
-  var shards = {}
-  var shardsEtags = {}
-  return async shard => {
-    let prefix = shard[0]
-    let sha = await githubGetPrefixSHA(prefix)
-    let requestShard = { url: `${ghUrlPrefix}/git/trees/${sha}?recursive=true`, family: 4 }
-    if (shardsEtags[shard]) {
-      requestShard.headers = { 'if-none-match': shardsEtags[shard] }
-    }
-    let [response, body] = await request(requestShard)
-    printRateLimit(response)
-    if (response.statusCode == 200) {
-      shards[shard] = JSON.parse(body)
-      shardsEtags[shard] = response.headers['etag']
-      console.log('shard modified')
-    } else if (response.statusCode == 304) {
-      // nothing
-      console.log('shard not modified')
-    } else {
-      throw new Error(response)
-    }
-    return [shards[shard], shardsEtags[shard]]
-  }
-}()
-
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
-    let shard = shardUrlRegex.exec(req.url).slice(1)
-    let infix = shard[1]
-    let suffix = shard[2]
+    let shardList = shardUrlRegex.exec(req.url).slice(1)
+    let prefix = shardList[0]
+    let infix = shardList[1]
+    let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let ifNoneMatch = req.headers ? req.headers['if-none-match'] : null
-    let [json, etag] = await githubGetShard(shard)
-    console.log(`truncated: ${json.truncated}`)
+    let shardSHAUrl = `${ghUrlPrefix}/contents/Specs`
+    let [responseSha, bodySHA] = await request({ url: shardSHAUrl, family: 4 })
 
-    console.log(`ifnm: ${ifNoneMatch} etag: ${etag}`)
-    if (ifNoneMatch === etag) {
+    if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
+      printRateLimit(responseSha)
+      res.setHeader('Cache-Control', 'no-cache')
+      res.sendStatus(403)
+      return
+    }
+    // console.log(bodySHA)
+    let shardSHA = JSON.parse(bodySHA).find(s => s.name === prefix)
+    // console.log(shardSHA)
+    let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
+
+    let [response, body] = await request({ url: shardUrl, family: 4 })
+
+    // console.log(response.headers)
+    if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
       res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
-      res.setHeader('ETag', etag)
+      res.setHeader('ETag', response.headers['etag'])
       res.sendStatus(304)
       return
     }
 
+    printRateLimit(response)
+    if (response.statusCode != 200 && responseSha.statusCode != 304) {
+      res.setHeader('Cache-Control', 'no-cache')
+      res.sendStatus(403)
+      return
+    }
+    // console.log(body)
+    let json = JSON.parse(body)
+    console.log(`truncated: ${json.truncated}`)
     let pods = json.tree
       .map(entry => entry.path.split('/'))
       .filter(p => p.length == 4 && p[0] === infix && p[1] === suffix)
@@ -136,7 +112,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
 
     res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
-    res.setHeader('ETag', etag)
+    res.setHeader('ETag', response.headers['etag'])
     res.send(versions.join('\n'))
   } catch (error) {
     console.log(error)
