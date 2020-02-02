@@ -51,7 +51,12 @@ Array.prototype.grouped = function() {
 }
 
 function printRateLimit(response) {
-  console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
+  let rateLimit = Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit'))
+  if (rateLimit.length > 0) {
+    console.log(rateLimit)
+  } else {
+    console.log(response.body)
+  }
 }
 
 let bottleneck = (args) => new Bottleneck(args)
