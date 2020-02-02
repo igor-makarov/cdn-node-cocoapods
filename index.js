@@ -81,7 +81,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     }
     // console.log(bodySHA)
     let shardSHA = JSON.parse(bodySHA).find(s => s.name === prefix)
-    console.log(shardSHA)
+    // console.log(shardSHA)
     let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
 
     let [response, body] = await request({ url: shardUrl, family: 4 })
