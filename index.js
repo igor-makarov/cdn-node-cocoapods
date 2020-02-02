@@ -41,9 +41,9 @@ const app = express()
 app.use(compression({threshold: 0 }))
 
 app.use(slowDown({
-  windowMs: 2 * 60 * 1000, // X minutes
-  delayAfter: 400, // allow Y requests per X minutes, then...
-  delayMs: 50 // begin adding Z ms of delay per each request above Y
+  windowMs: 1 * 60 * 1000, // X minutes
+  delayAfter: 30, // allow Y requests per X minutes, then...
+  delayMs: 1 // begin adding Z ms of delay per each request above Y
 }))
 
 Array.prototype.grouped = function() {
