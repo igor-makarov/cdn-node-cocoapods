@@ -54,8 +54,7 @@ function printRateLimit(response) {
 }
 
 const limiter = new Bottleneck({
-  maxConcurrent: 100,
-  minTime: 10
+  maxConcurrent: 50
 })
 
 let githubRequest = limiter.wrap(request)
