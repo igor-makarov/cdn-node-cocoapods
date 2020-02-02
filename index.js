@@ -72,7 +72,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let shardSHAUrl = `${fullHostname}/latest`
+    let shardSHAUrl = `${fullHostname}/latest/${prefix}`
     let [responseSha, bodySHA] = await request({ url: shardSHAUrl })
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
@@ -82,7 +82,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
     // console.log(bodySHA)
-    let shardSHA = JSON.parse(bodySHA).find(s => s.name === prefix)
+    let shardSHA = JSON.parse(bodySHA).find(s => s.name === infix)
     // console.log(shardSHA)
     let shardUrl = `${fullHostname}/tree/${shardSHA.sha}`
 
@@ -107,8 +107,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
     console.log(`truncated: ${json.truncated}`)
     let pods = json.tree
       .map(entry => entry.path.split('/'))
-      .filter(p => p.length == 4 && p[0] === infix && p[1] === suffix)
-      .map(([i, s, n, v]) => { return { name: n, version: v } })
+      .filter(p => p.length == 3 && p[0] === suffix)
+      .map(([s, n, v]) => { return { name: n, version: v } })
 
     let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
 
