@@ -4,6 +4,7 @@ const express = require('express')
 const pify = require('pify')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
+const slowDown = require("express-slow-down")
 
 const token = process.env['GH_TOKEN']
 const port = process.env['PORT']
@@ -38,6 +39,12 @@ const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
 const app = express()
 app.use(compression({threshold: 0 }))
+
+app.use(slowDown({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  delayAfter: 1000, // allow 1000 requests per 1 minute, then...
+  delayMs: 10 // begin adding 10ms of delay per each request above 1000
+}))
 
 Array.prototype.grouped = function() {
   return this.reduce(function(groups, item) {
