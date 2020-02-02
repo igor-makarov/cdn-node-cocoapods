@@ -66,11 +66,11 @@ const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
     let shardList = shardUrlRegex.exec(req.url).slice(1)
-    let prefix = shardList.slice(0, -2)
+    let prefix = shardList[0]
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let shardSHAUrl = `${ghUrlPrefix}/contents/Specs/${prefix.join('/')}`
+    let shardSHAUrl = `${ghUrlPrefix}/contents/Specs`
     let [responseSha, bodySHA] = await request({ url: shardSHAUrl, family: 4 })
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
@@ -80,8 +80,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
     // console.log(bodySHA)
-    let shardSHA = JSON.parse(bodySHA).find(s => s.name === infix)
-    // console.log(shardSHA)
+    let shardSHA = JSON.parse(bodySHA).find(s => s.name === prefix)
+    console.log(shardSHA)
     let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
 
     let [response, body] = await request({ url: shardUrl, family: 4 })
@@ -105,8 +105,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
     console.log(`truncated: ${json.truncated}`)
     let pods = json.tree
       .map(entry => entry.path.split('/'))
-      .filter(p => p.length == 3 && p[0] === suffix)
-      .map(([s, n, v]) => { return { name: n, version: v } })
+      .filter(p => p.length == 4 && p[0] === infix && p[1] === suffix)
+      .map(([i, s, n, v]) => { return { name: n, version: v } })
 
     let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
 
