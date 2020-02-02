@@ -87,15 +87,20 @@ app.get(shardUrlRegex, async (req, res) => {
   res.send(versions.join('\n'))
 })
 
-const ghProxy = proxy({ target: 'https://raw.githubusercontent.com/CocoaPods/Specs/master/', 
+function proxyTo(url, maxAge = 14400) {
+  return proxy({ target: url, 
                         changeOrigin: true,
                         onProxyRes: (proxyRes, req, res) => {
-                          proxyRes.headers['Cache-Control'] = 'public,max-age=14400,s-max-age=14400'
+                          proxyRes.headers['Cache-Control'] = `public,max-age=${maxAge},s-max-age=${maxAge}`
                         }
                       })
+}
 
-app.use('/CocoaPods-version.yml', ghProxy)
-app.use('//CocoaPods-version.yml', ghProxy)
-app.get('/deprecated_podspecs.txt', (req, res) => res.redirect(301, 'https://cdn.cocoapods.org/deprecated_podspecs.txt'))
+let ghProxy = proxyTo('https://raw.githubusercontent.com/CocoaPods/Specs/master/')
+let netlifyProxy = (maxAge) => proxyTo('https://cdn.cocoapods.org/', maxAge)
+app.get('/CocoaPods-version.yml', ghProxy)
+app.get('//CocoaPods-version.yml', ghProxy)
+app.get('/all_pods.txt', netlifyProxy(10 * 60))
+app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
