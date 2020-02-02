@@ -137,7 +137,7 @@ function githubRequestProxy(pathRewrite, maxAge) {
   })
 }
 
-app.get('/latest', githubRequestProxy({
+app.get('/latest/?*', githubRequestProxy({
   '^/latest': '/contents/Specs'
 }, 60))
 
