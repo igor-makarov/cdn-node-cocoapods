@@ -96,7 +96,6 @@ const ghProxy = proxy({ target: 'https://raw.githubusercontent.com/CocoaPods/Spe
 
 app.use('/CocoaPods-version.yml', ghProxy)
 app.use('//CocoaPods-version.yml', ghProxy)
-app.get(/\/Specs\/.*\.podspec.json/, ghProxy)
 app.get('/deprecated_podspecs.txt', (req, res) => res.redirect(301, 'https://cdn.cocoapods.org/deprecated_podspecs.txt'))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
