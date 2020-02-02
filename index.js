@@ -4,7 +4,7 @@ const express = require('express')
 const pify = require('pify')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
-const slowDown = require("express-slow-down")
+const Bottleneck = require('bottleneck');
 
 const token = process.env['GH_TOKEN']
 const port = process.env['PORT']
@@ -40,12 +40,6 @@ const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 const app = express()
 app.use(compression({threshold: 0 }))
 
-app.use(slowDown({
-  windowMs: 1 * 60 * 1000, // X minutes
-  delayAfter: 30, // allow Y requests per X minutes, then...
-  delayMs: 1 // begin adding Z ms of delay per each request above Y
-}))
-
 Array.prototype.grouped = function() {
   return this.reduce(function(groups, item) {
     const val = item.name
@@ -59,6 +53,13 @@ function printRateLimit(response) {
   console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
 }
 
+const limiter = new Bottleneck({
+  maxConcurrent: 100,
+  minTime: 10
+})
+
+let githubRequest = limiter.wrap(request)
+
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
@@ -66,7 +67,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let prefix = shardList.slice(0, -1)
     let suffix = shardList.pop()
     let shardSHAUrl = `${ghUrlPrefix}/contents/Specs/${prefix.join('/')}`
-    let [responseSha, bodySHA] = await request({ url: shardSHAUrl, family: 4 })
+    let [responseSha, bodySHA] = await githubRequest({ url: shardSHAUrl, family: 4 })
 
     if (responseSha.statusCode != 200) {
       printRateLimit(responseSha)
@@ -84,7 +85,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
         'if-none-match': req.headers['if-none-match']
       }
     }
-    let [response, body] = await request(ghIndexRequest)
+    let [response, body] = await githubRequest(ghIndexRequest)
 
     // console.log(response.headers)
     if (response.statusCode == 304 || response.headers['etag'] == req.headers['if-none-match']) {
