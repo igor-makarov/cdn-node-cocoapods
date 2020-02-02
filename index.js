@@ -60,7 +60,7 @@ function printRateLimit(response) {
 }
 
 let bottleneck = (args) => new Bottleneck(args)
-let githubRequest = bottleneck({ maxConcurrent: 1 }).wrap(request)
+let githubRequest = bottleneck({ maxConcurrent: 10 }).wrap(request)
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
