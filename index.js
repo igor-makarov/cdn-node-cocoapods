@@ -1,4 +1,4 @@
-const requestExt = require('request-extensible')
+const requestBase = require('request')
 const ETagRequest = require('request-etag');
 const express = require('express')
 const pify = require('pify')
@@ -16,28 +16,28 @@ if (!port) {
   throw new Error('No $PORT provided')
 }
 
-let withAddedHeaders = requestExt({
-  extensions: [
-    function (options, callback, next) {
-      /* Add a user-agent header */
-      if (!options.headers) options.headers = {};
-      options.headers['user-agent'] = 'request-extensible-demo/1.0';
-      options.headers['authorization'] = `token ${token}`;
+// let withAddedHeaders = requestExt({
+//   extensions: [
+//     function (options, callback, next) {
+//       /* Add a user-agent header */
+//       if (!options.headers) options.headers = {};
+//       options.headers['user-agent'] = 'request-extensible-demo/1.0';
+//       options.headers['authorization'] = `token ${token}`;
 
-      return next(options, callback);
-    }
-  ]
-})
+//       return next(options, callback);
+//     }
+//   ]
+// })
 
 let bottleneck = (args) => new Bottleneck(args)
 
 let cached = new ETagRequest({
   max: 300 * 1024 * 1024
-}, withAddedHeaders);
+}, requestBase);
 
-let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(cached)
+// let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(cached)
 
-const request = pify(rateLimited, { multiArgs: true })
+const request = pify(cached, { multiArgs: true })
 
 const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
@@ -66,13 +66,14 @@ function printRateLimit(response) {
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
+    let fullHostname = req.protocol + '://' + req.get('host')
     let shardList = shardUrlRegex.exec(req.url).slice(1)
     let prefix = shardList[0]
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let shardSHAUrl = `${ghUrlPrefix}/contents/Specs`
-    let [responseSha, bodySHA] = await request({ url: shardSHAUrl, family: 4 })
+    let shardSHAUrl = `${fullHostname}/latest`
+    let [responseSha, bodySHA] = await request({ url: shardSHAUrl })
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       printRateLimit(responseSha)
@@ -83,9 +84,9 @@ app.get(shardUrlRegex, async (req, res, next) => {
     // console.log(bodySHA)
     let shardSHA = JSON.parse(bodySHA).find(s => s.name === prefix)
     // console.log(shardSHA)
-    let shardUrl = `${ghUrlPrefix}/git/trees/${shardSHA.sha}?recursive=true`
+    let shardUrl = `${fullHostname}/tree/${shardSHA.sha}`
 
-    let [response, body] = await request({ url: shardUrl, family: 4 })
+    let [response, body] = await request({ url: shardUrl })
 
     // console.log(response.headers)
     if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
@@ -130,6 +131,7 @@ function githubRequestProxy(pathRewrite, maxAge) {
       proxyReq.setHeader('authorization', `token ${token}`)
     },
     onProxyRes: (proxyRes, req, res) => {
+      printRateLimit(proxyRes)
       proxyRes.headers['Cache-Control'] = `public,max-age=${maxAge},s-max-age=${maxAge}`
     }
   })
