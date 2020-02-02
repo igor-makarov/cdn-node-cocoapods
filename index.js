@@ -60,7 +60,8 @@ function printRateLimit(response) {
 }
 
 let bottleneck = (args) => new Bottleneck(args)
-let githubRequest = bottleneck({ maxConcurrent: 10 }).wrap(request)
+let githubPrefixRequest = bottleneck({ maxConcurrent: 1 }).wrap(request)
+let githubShardRequest = bottleneck({ maxConcurrent: 1 }).wrap(request)
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
@@ -71,7 +72,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
     let shardSHAUrl = `${ghUrlPrefix}/contents/Specs/${prefix.join('/')}`
-    let [responseSha, bodySHA] = await githubRequest({ url: shardSHAUrl, family: 4 })
+    let [responseSha, bodySHA] = await githubPrefixRequest({ url: shardSHAUrl, family: 4 })
 
     if (responseSha.statusCode != 200) {
       printRateLimit(responseSha)
@@ -91,7 +92,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
         'if-none-match': req.headers['if-none-match']
       }
     }
-    let [response, body] = await githubRequest(ghIndexRequest)
+    let [response, body] = await githubShardRequest(ghIndexRequest)
 
     // console.log(response.headers)
     if (response.statusCode == 304 || (response.statusCode == 200 && (response.headers['etag'] == req.headers['if-none-match']))) {
