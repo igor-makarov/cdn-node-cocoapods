@@ -144,6 +144,29 @@ app.get(shardUrlRegex, async (req, res, next) => {
   }
 })
 
+function githubRequestProxy(pathRewrite, maxAge) {
+  return proxy({
+    target: ghUrlPrefix,
+    pathRewrite: pathRewrite,
+    changeOrigin: true,
+    onProxyReq: (proxyReq, req, res) => {
+      proxyReq.setHeader('user-agent', 'pods-cdn/1.0')
+      proxyReq.setHeader('authorization', `token ${token}`)
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      proxyRes.headers['Cache-Control'] = `public,max-age=${maxAge},s-max-age=${maxAge}`
+    }
+  })
+}
+
+app.get('/latest', githubRequestProxy({
+  '^/latest': '/contents/Specs'
+}, 60))
+
+app.get('/tree/:tree_sha', githubRequestProxy((path, req) => {
+  return path.replace('/tree', '/git/trees/') + '?recursive=true'
+}, 7 * 24 * 60 * 60))
+
 function proxyTo(url, maxAge = 14400) {
   return proxy({ target: url, 
                         changeOrigin: true,
