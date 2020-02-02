@@ -48,6 +48,10 @@ Array.prototype.grouped = function() {
   }, {})
 }
 
+function printRateLimit(response) {
+  console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
+}
+
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
@@ -58,6 +62,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let [responseSha, bodySHA] = await request({ url: shardSHAUrl, family: 4 })
 
     if (responseSha.statusCode != 200) {
+      printRateLimit(responseSha)
       res.sendStatus(403)
       return
     }
@@ -80,11 +85,11 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
 
+    printRateLimit(response)
     if (response.statusCode != 200) {
       res.sendStatus(403)
       return
     }
-    console.log(Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit')))
     // console.log(body)
     const pods = JSON.parse(body).tree
       .map(entry => entry.path.split('/'))
