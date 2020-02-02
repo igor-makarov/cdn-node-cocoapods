@@ -30,13 +30,14 @@ let withAddedHeaders = requestExt({
 })
 
 let bottleneck = (args) => new Bottleneck(args)
-let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(withAddedHeaders)
 
 let cached = new ETagRequest({
   max: 300 * 1024 * 1024
-}, rateLimited);
+}, withAddedHeaders);
 
-const request = pify(cached, { multiArgs: true })
+let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(cached)
+
+const request = pify(rateLimited, { multiArgs: true })
 
 const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
