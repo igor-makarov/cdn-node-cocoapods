@@ -3,7 +3,6 @@ const express = require('express')
 const pify = require('pify')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
-const Bottleneck = require('bottleneck');
 const stats = require('./stats')
 const responseTime = require('response-time')
 
@@ -17,30 +16,7 @@ if (!port) {
   throw new Error('No $PORT provided')
 }
 
-// let withAddedHeaders = requestExt({
-//   extensions: [
-//     function (options, callback, next) {
-//       /* Add a user-agent header */
-//       if (!options.headers) options.headers = {};
-//       options.headers['user-agent'] = 'request-extensible-demo/1.0';
-//       options.headers['authorization'] = `token ${token}`;
-
-//       return next(options, callback);
-//     }
-//   ]
-// })
-
-let bottleneck = (args) => new Bottleneck(args)
-
-// let cached = new ETagRequest({
-//   max: 300 * 1024 * 1024
-// }, requestBase);
-
-// let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(cached)
-
 const request = pify(requestBase, { multiArgs: true })
-
-const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
 const app = express()
 app.use(responseTime())
@@ -128,6 +104,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
   }
 })
 
+let ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 function githubRequestProxy(pathRewrite, maxAge) {
   return proxy({
     target: ghUrlPrefix,
