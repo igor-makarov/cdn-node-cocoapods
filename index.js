@@ -33,6 +33,10 @@ Array.prototype.grouped = function() {
   }, {})
 }
 
+Array.prototype.flat = function() {
+  return this.reduce((acc, val) => acc.concat(val), []);
+}
+
 function printRateLimit(response) {
   let rateLimit = Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit'))
   if (rateLimit.length > 0) {
@@ -104,6 +108,56 @@ app.get(shardUrlRegex, async (req, res, next) => {
   }
 })
 
+app.get('/all_pods.txt', async (req, res, next) => {
+  try {
+    let fullHostname = req.protocol + '://' + req.get('host')
+    let shardSHAUrl = `${fullHostname}/latest`
+    let shardSHARequest = { url: shardSHAUrl }
+    if (req.headers['if-none-match']) {
+      shardSHARequest.headers = { 'if-none-match': req.headers['if-none-match'] }
+    }
+    let [responseSha, bodySHA] = await request(shardSHARequest)
+
+    if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
+      printRateLimit(responseSha)
+      res.setHeader('Cache-Control', 'no-cache')
+      res.sendStatus(403)
+      return
+    }
+
+    if ((responseSha.statusCode == 200 || responseSha.statusCode == 304) && (responseSha.headers['etag'] == req.headers['if-none-match'])) {
+      res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
+      res.setHeader('ETag', responseSha.headers['etag'])
+      res.sendStatus(304)
+      return
+    }
+    // console.log(bodySHA)
+    let shas = JSON.parse(bodySHA).map(s => s.sha)
+
+    let promises = shas.map(async sha => {
+      let shardUrl = `${fullHostname}/tree/${sha}`
+      let [response, body] = await request({ url: shardUrl })
+      let json = JSON.parse(body)
+      console.log(`truncated: ${json.truncated}`)
+      let pods = json.tree
+        .map(entry => entry.path.split('/'))
+        .filter(p => p.length == 3)
+        .map(p => p[2])
+      return pods
+    })
+
+    let podsArrays = await Promise.all(promises)
+    let pods = podsArrays.flat().sort()
+
+    res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
+    res.setHeader('ETag', responseSha.headers['etag'])
+    res.send(pods.join('\n'))
+  } catch (error) {
+    console.log(error)
+    next(error)
+  }
+})
+
 let ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 function githubRequestProxy(pathRewrite, maxAge) {
   return proxy({
@@ -142,7 +196,7 @@ let ghProxy = proxyTo('https://raw.githubusercontent.com/CocoaPods/Specs/master/
 let netlifyProxy = (maxAge) => proxyTo('https://cdn.cocoapods.org/', maxAge)
 app.get('/CocoaPods-version.yml', ghProxy)
 app.get('//CocoaPods-version.yml', ghProxy)
-app.get('/all_pods.txt', netlifyProxy(10 * 60))
+// app.get('/all_pods.txt', netlifyProxy(10 * 60))
 app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
