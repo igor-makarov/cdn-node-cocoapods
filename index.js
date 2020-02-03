@@ -73,7 +73,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     // console.log(response.headers)
     if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
-      res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+      res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
       res.setHeader('ETag', response.headers['etag'])
       res.sendStatus(304)
       return
@@ -95,7 +95,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
 
-    res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+    res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', response.headers['etag'])
     res.send(versions.join('\n'))
   } catch (error) {
@@ -116,7 +116,7 @@ function githubRequestProxy(pathRewrite, maxAge) {
     },
     onProxyRes: (proxyRes, req, res) => {
       printRateLimit(proxyRes)
-      proxyRes.headers['Cache-Control'] = `public,max-age=${maxAge},s-max-age=${maxAge}`
+      proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
     }
   })
 }
@@ -133,7 +133,7 @@ function proxyTo(url, maxAge = 14400) {
   return proxy({ target: url, 
                         changeOrigin: true,
                         onProxyRes: (proxyRes, req, res) => {
-                          proxyRes.headers['Cache-Control'] = `public,max-age=${maxAge},s-max-age=${maxAge}`
+                          proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
                         }
                       })
 }
