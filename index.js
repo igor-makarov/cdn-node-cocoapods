@@ -31,13 +31,13 @@ if (!port) {
 
 let bottleneck = (args) => new Bottleneck(args)
 
-let cached = new ETagRequest({
-  max: 300 * 1024 * 1024
-}, requestBase);
+// let cached = new ETagRequest({
+//   max: 300 * 1024 * 1024
+// }, requestBase);
 
 // let rateLimited = bottleneck({ maxConcurrent: 1 }).wrap(cached)
 
-const request = pify(cached, { multiArgs: true })
+const request = pify(requestBase, { multiArgs: true })
 
 const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
@@ -86,7 +86,11 @@ app.get(shardUrlRegex, async (req, res, next) => {
     // console.log(shardSHA)
     let shardUrl = `${fullHostname}/tree/${shardSHA.sha}`
 
-    let [response, body] = await request({ url: shardUrl })
+    let shardRequest = { url: shardUrl }
+    if (req.headers['if-none-match']) {
+      shardRequest.headers = { 'if-none-match': req.headers['if-none-match'] }
+    }
+    let [response, body] = await request(shardRequest)
 
     // console.log(response.headers)
     if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
