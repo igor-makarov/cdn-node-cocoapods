@@ -1,10 +1,11 @@
 const requestBase = require('request')
-const ETagRequest = require('request-etag');
 const express = require('express')
 const pify = require('pify')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
 const Bottleneck = require('bottleneck');
+const stats = require('./stats')
+const responseTime = require('response-time')
 
 const token = process.env['GH_TOKEN']
 const port = process.env['PORT']
@@ -42,6 +43,8 @@ const request = pify(requestBase, { multiArgs: true })
 const ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
 
 const app = express()
+app.use(responseTime())
+app.use(stats())
 app.use(compression({threshold: 0 }))
 app.set('etag', false)
 

@@ -16,7 +16,8 @@
     "express": "^4.17.1",
     "http-proxy-middleware": "^0.20.0",
     "pify": "^4.0.1",
-    "request-etag": "^2.0.3",
-    "request-extensible": "^0.1.1"
+    "request": "^2.88.0",
+    "response-time": "^2.3.2",
+    "span": "0.0.6"
   }
 }
