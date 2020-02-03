@@ -5,7 +5,7 @@ var
 module.exports = function (options) {
   var defaultOptions = {
     url        : '/health',
-    cacheSize  : 100,
+    cacheSize  : 1000,
     appVersion : 'unknown',
     statusCheck: function() {
       return 'ok';
