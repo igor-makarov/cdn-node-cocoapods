@@ -109,7 +109,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
       res.setHeader('ETag', response.headers['etag'])
       res.send(versions.join('\n'))
     } catch (error) {
-      console.log(`Body: ${body} headers: ${response.headers}`)
+      console.log(`Body: ${body} headers: ${Object.entries(response.headers)}`)
       throw error
     }
   } catch (error) {
