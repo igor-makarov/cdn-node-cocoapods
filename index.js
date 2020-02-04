@@ -6,6 +6,7 @@ const proxy = require('http-proxy-middleware')
 const compression = require('compression')
 const stats = require('./stats')
 const responseTime = require('response-time')
+const etag = require('etag')
 
 if (process.env.PRETTY_LOG) {
   require('log-timestamp')
@@ -51,14 +52,23 @@ function printRateLimit(response) {
   }
 }
 
-function githubProxyUrl(req, path) {
+function selfProxyUrlPrefix(req, path) {
   let host = req.get('host')
   let protocol = host === 'localhost:3000' ? 'http' : 'https'
-  let newPath = `${protocol}://${host}/${token}/${path}`
+  let newPath = `${protocol}://${host}`
   // console.log(`new path: ${newPath}`)
   return newPath
 }
 
+function githubProxyUrl(req, path) {
+  return `${selfProxyUrlPrefix(req)}/${token}/${path}`
+}
+
+function githubCDNProxyUrl(req, path) {
+  return `${process.env.GH_CDN || selfProxyUrlPrefix(req)}/${path}`
+}
+
+var deprecatedPodspecs = new Set()
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
@@ -105,6 +115,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     }
     // console.log(body)
     try {
+      console.log(`Received body ${shardList}`)
       let json = JSON.parse(body)
       console.log(`truncated: ${json.truncated}`)
       let pods = json.tree
@@ -113,10 +124,29 @@ app.get(shardUrlRegex, async (req, res, next) => {
         .map(([s, n, v]) => { return { name: n, version: v } })
 
       let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
+      console.log(`Parsed ${shardList}`)
 
       res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
       res.setHeader('ETag', response.headers['etag'])
       res.send(versions.join('\n'))
+
+      try {
+        let deprecations = pods.map(async pod => {
+          let path = ['Specs', ...shardList, pod.name, pod.version, `${pod.name}.podspec.json`].join('/')
+          let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
+          // console.log(`Body: ${body}`)
+          let json = JSON.parse(body)
+          if (json.deprecated) {
+            console.log(`Deprecated: ${path}`)
+            deprecatedPodspecs.add(path)
+          }
+        })
+        await Promise.all(deprecations)
+        console.log(`Current deprecations: ${[...deprecatedPodspecs]}`)
+      } catch (error) {
+        console.log(`Deprecation poll error: ${error}`)
+      }
+      console.log(`Parsed Deprecations: ${shardList}`)
     } catch (error) {
       console.log(`Body: ${body} headers: ${Object.entries(response.headers)}`)
       throw error
@@ -125,6 +155,21 @@ app.get(shardUrlRegex, async (req, res, next) => {
     console.log(error)
     next(error)
   }
+})
+
+app.get('/deprecated_podspecs.txt', async (req, res, next) => {
+  let list = [...deprecatedPodspecs].join('\n')
+  let listEtag = etag(list)
+  console.log(listEtag)
+  if (req.headers["if-none-match"] && req.headers["if-none-match"] === listEtag) {
+    res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
+    res.setHeader('ETag', listEtag)
+    res.sendStatus(304)
+    return
+  }
+  res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
+  res.setHeader('ETag', listEtag)
+  res.send(list)
 })
 
 app.get('/all_pods.txt', async (req, res, next) => {
@@ -216,6 +261,6 @@ let netlifyProxy = (maxAge) => proxyTo('https://cdn.cocoapods.org/', maxAge)
 app.get('/CocoaPods-version.yml', ghProxy)
 app.get('//CocoaPods-version.yml', ghProxy)
 // app.get('/all_pods.txt', netlifyProxy(10 * 60))
-app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
+// app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
