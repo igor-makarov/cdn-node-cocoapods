@@ -182,7 +182,6 @@ function githubRequestProxy(pathRewrite, maxAge) {
     },
     onProxyRes: (proxyRes, req, res) => {
       printRateLimit(proxyRes)
-      if (proxyRes)
       console.log(`GH API status: ${proxyRes.statusCode}`)
       proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
     }
