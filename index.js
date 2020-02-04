@@ -125,8 +125,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
 app.get('/all_pods.txt', async (req, res, next) => {
   try {
-    let fullHostname = req.protocol + '://' + req.get('host')
-    let shardSHAUrl = `${fullHostname}/latest`
+    let shardSHAUrl = githubProxyUrl(req, 'latest')
     let shardSHARequest = { url: shardSHAUrl }
     if (req.headers['if-none-match']) {
       shardSHARequest.headers = { 'if-none-match': req.headers['if-none-match'] }
@@ -134,7 +133,7 @@ app.get('/all_pods.txt', async (req, res, next) => {
     let [responseSha, bodySHA] = await request(shardSHARequest)
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
-      printRateLimit(responseSha)
+      console.log(`error from latest: ${responseSha.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
       return
@@ -150,7 +149,7 @@ app.get('/all_pods.txt', async (req, res, next) => {
     let shas = JSON.parse(bodySHA).map(s => s.sha)
 
     let promises = shas.map(async sha => {
-      let shardUrl = `${fullHostname}/tree/${sha}`
+      let shardUrl = githubProxyUrl(req, `tree/${sha}`)
       let [response, body] = await request({ url: shardUrl })
       let json = JSON.parse(body)
       console.log(`truncated: ${json.truncated}`)
