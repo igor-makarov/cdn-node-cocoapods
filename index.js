@@ -7,6 +7,7 @@ const compression = require('compression')
 const stats = require('./stats')
 const responseTime = require('response-time')
 const etag = require('etag')
+const Bottleneck = require('bottleneck');
 
 if (process.env.PRETTY_LOG) {
   require('log-timestamp')
@@ -75,11 +76,14 @@ function allDeprecatedPodspecs() {
   return Object.values(deprecatedPodspecs).map(l => [...l]).flat().sort()
 }
 
+let bottleneck = (args) => new Bottleneck(args)
+let rateLimitedPodspecRetriever = bottleneck({ maxConcurrent: 100 }).wrap(request)
+
 async function parseDeprecations(req, pods, shardList) {
   try {
     let deprecations = pods.map(async pod => {
       let path = ['Specs', ...shardList, pod.name, pod.version, `${pod.name}.podspec.json`].join('/')
-      let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
+      let [response, body] = await rateLimitedPodspecRetriever({ url: githubCDNProxyUrl(req, path) })
       // console.log(`Body: ${body}`)
       let json = JSON.parse(body)
       if (json.deprecated) {
