@@ -63,6 +63,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       printRateLimit(responseSha)
+      console.log(`error from latest: ${responseSha.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
       return
@@ -87,7 +88,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
     }
 
     printRateLimit(response)
-    if (response.statusCode != 200 && responseSha.statusCode != 304) {
+    if (response.statusCode != 200 && response.statusCode != 304) {
+      console.log(`error from latest: ${response.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
       return
