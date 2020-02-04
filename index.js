@@ -47,7 +47,7 @@ function printRateLimit(response) {
 }
 
 function githubProxyUrl(req, path) {
-  return `${req.protocol}://${req.get('host')}/${token}/${port}/${path}`
+  return `${req.protocol}://${req.get('host')}/${token}/${path}`
 }
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
@@ -186,11 +186,11 @@ function githubRequestProxy(pathRewrite, maxAge) {
   })
 }
 
-app.get(`^/${token}/${port}/latest/?*`, githubRequestProxy((path, req) => {
+app.get(`^/${token}/latest/?*`, githubRequestProxy((path, req) => {
     return path.replace(/^\/.*\/latest/, '/contents/Specs')
 }, 60))
 
-app.get(`^/${token}/${port}/tree/:tree_sha`, githubRequestProxy((path, req) => {
+app.get(`^/${token}/tree/:tree_sha`, githubRequestProxy((path, req) => {
   return path.replace(/^\/.*\/tree/, '/git/trees') + '?recursive=true'
 }, 7 * 24 * 60 * 60))
 
