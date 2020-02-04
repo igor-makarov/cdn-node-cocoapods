@@ -12,6 +12,7 @@
   "dependencies": {
     "compression": "^1.7.4",
     "dotenv": "^8.2.0",
+    "etag": "^1.8.1",
     "express": "^4.17.1",
     "http-proxy-middleware": "^0.20.0",
     "log-timestamp": "^0.3.0",
