@@ -82,7 +82,8 @@ async function parseDeprecationsImpl(req, pods, shardList) {
   try {
     let result = new Set()
     let deprecations = pods.map(async pod => {
-      let path = ['Specs', ...shardList, pod.name, pod.version, `${pod.name}.podspec.json`].join('/')
+      let encodedPodName = encodeURIComponent(pod.name)
+      let path = ['Specs', ...shardList, encodedPodName, pod.version, `${encodedPodName}.podspec.json`].join('/')
       let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
       // console.log(`Body: ${body}`)
       let json = JSON.parse(body)
