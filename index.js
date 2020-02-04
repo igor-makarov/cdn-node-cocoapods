@@ -46,16 +46,19 @@ function printRateLimit(response) {
   }
 }
 
+function githubProxyUrl(req, path) {
+  return `${req.protocol}://${req.get('host')}/${token}/${port}/${path}`
+}
+
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
-    let fullHostname = req.protocol + '://' + req.get('host')
     let shardList = shardUrlRegex.exec(req.url).slice(1)
     let prefix = shardList[0]
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let shardSHAUrl = `${fullHostname}/latest/${prefix}`
+    let shardSHAUrl = githubProxyUrl(req, `latest/${prefix}`)
     let [responseSha, bodySHA] = await request({ url: shardSHAUrl })
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
@@ -67,7 +70,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     // console.log(bodySHA)
     let shardSHA = JSON.parse(bodySHA).find(s => s.name === infix)
     // console.log(shardSHA)
-    let shardUrl = `${fullHostname}/tree/${shardSHA.sha}`
+    let shardUrl = githubProxyUrl(req, `tree/${shardSHA.sha}`)
 
     let shardRequest = { url: shardUrl }
     if (req.headers['if-none-match']) {
@@ -175,12 +178,12 @@ function githubRequestProxy(pathRewrite, maxAge) {
   })
 }
 
-app.get('/latest/?*', githubRequestProxy({
-  '^/latest': '/contents/Specs'
+app.get(`^/${token}/${port}/latest/?*`, githubRequestProxy((path, req) => {
+    return path.replace(/^\/.*\/latest/, '/contents/Specs')
 }, 60))
 
-app.get('/tree/:tree_sha', githubRequestProxy((path, req) => {
-  return path.replace('/tree', '/git/trees/') + '?recursive=true'
+app.get(`^/${token}/${port}/tree/:tree_sha`, githubRequestProxy((path, req) => {
+  return path.replace(/^\/.*\/tree/, '/git/trees') + '?recursive=true'
 }, 7 * 24 * 60 * 60))
 
 function proxyTo(url, maxAge = 14400) {
