@@ -66,7 +66,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let [responseSha, bodySHA] = await request({ url: shardSHAUrl })
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
-      printRateLimit(responseSha)
+      // printRateLimit(responseSha)
       console.log(`error from latest: ${responseSha.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
@@ -91,7 +91,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
 
-    printRateLimit(response)
+    // printRateLimit(response)
     if (response.statusCode != 200 && response.statusCode != 304) {
       console.log(`error from latest: ${response.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
