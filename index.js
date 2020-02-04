@@ -78,16 +78,16 @@ function allDeprecatedPodspecs() {
 
 let bottleneck = (args) => new Bottleneck(args)
 
-async function parseDeprecationsImpl(req, shardTwo, shardSHA) {
+async function parseDeprecationsImpl(req, shardList, shardSHA) {
   try {
-    let deprecationUrl = githubProxyUrl(req, `deprecations/${shardSHA}/${shardTwo.join('/')}`)
+    let deprecationUrl = githubProxyUrl(req, `deprecations/${shardSHA}/${shardList.join('/')}`)
     let [response, deprecated] = await request({ url: deprecationUrl })
-    deprecatedPodspecs[shardTwo] = deprecated.split('\n').filter(s => s !== '')
+    deprecatedPodspecs[shardList] = deprecated.split('\n').filter(s => s !== '')
     // console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
-    console.log(`Deprecation poll error: ${shardTwo} ${error}`)
+    console.log(`Deprecation poll error: ${shardList} ${error}`)
   }
-  console.log(`Parsed Deprecations: ${shardTwo}`)
+  console.log(`Parsed Deprecations: ${shardList}`)
 }
 
 let parseDeprecations = bottleneck({ maxConcurrent: 2 }).wrap(parseDeprecationsImpl)
@@ -149,9 +149,9 @@ app.get(shardUrlRegex, async (req, res, next) => {
       res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
       res.setHeader('ETag', response.headers['etag'])
       res.sendStatus(304)
-      if (!deprecatedPodspecs[shardTwo]) {
-        deprecatedPodspecs[shardTwo] = deprecatedPodspecs[shardTwo] || new Set()
-        parseDeprecations(req, shardTwo, shardSHA)
+      if (!deprecatedPodspecs[shardList]) {
+        deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
+        parseDeprecations(req, shardList, shardSHA)
       }
       return
     }
@@ -172,18 +172,19 @@ app.get(shardUrlRegex, async (req, res, next) => {
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', response.headers['etag'])
     res.send(versions.join('\n'))
-    deprecatedPodspecs[shardTwo] = deprecatedPodspecs[shardTwo] || new Set()
-    parseDeprecations(req, shardTwo, shardSHA)
+    deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
+    parseDeprecations(req, shardList, shardSHA)
   } catch (error) {
     console.log(error)
     next(error)
   }
 })
 
-app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix`, async (req, res, next) => {
+app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, res, next) => {
   let maxAge = 7 * 24 * 60 * 60
   let shardSHA = req.params.tree_sha
   let shardTwo = [req.params.prefix, req.params.infix]
+  let suffix = req.params.suffix
   console.log(`shardSha: ${shardSHA}`)
   let [response, pods] = await parsePods(req, shardTwo, shardSHA, req.headers['if-none-match'])
   if (response.statusCode == 304) {
@@ -195,7 +196,7 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix`, async (req, res, next
   // let result = new Set()
   res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
   res.setHeader('ETag', response.headers.etag)
-  let deprecations = pods.map(async pod => {
+  let deprecations = pods.filter(pod => pod.suffix === suffix).map(async pod => {
     try {
       let encodedPodName = encodeURIComponent(pod.name)
       let path = ['Specs', ...shardTwo, pod.suffix, encodedPodName, pod.version, `${encodedPodName}.podspec.json`].join('/')
