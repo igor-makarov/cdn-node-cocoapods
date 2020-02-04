@@ -50,7 +50,7 @@ function githubProxyUrl(req, path) {
   let host = req.get('host')
   let protocol = host === 'localhost:3000' ? 'http' : 'https'
   let newPath = `${protocol}://${host}/${token}/${path}`
-  console.log(`new path: ${newPath}`)
+  // console.log(`new path: ${newPath}`)
   return newPath
 }
 
@@ -184,7 +184,7 @@ function githubRequestProxy(pathRewrite, maxAge) {
     },
     onProxyRes: (proxyRes, req, res) => {
       printRateLimit(proxyRes)
-      console.log(`GH API status: ${proxyRes.statusCode}`)
+      // console.log(`GH API status: ${proxyRes.statusCode}`)
       proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
     }
   })
