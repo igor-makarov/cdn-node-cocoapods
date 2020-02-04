@@ -1,3 +1,4 @@
+require('dotenv').config()
 const requestBase = require('request')
 const express = require('express')
 const pify = require('pify')
@@ -6,8 +7,8 @@ const compression = require('compression')
 const stats = require('./stats')
 const responseTime = require('response-time')
 
-const token = process.env['GH_TOKEN']
-const port = process.env['PORT']
+const token = process.env.GH_TOKEN
+const port = process.env.PORT
 if (!token) {
   throw new Error('No $GH_TOKEN provided')
 }
