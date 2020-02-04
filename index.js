@@ -77,6 +77,7 @@ function allDeprecatedPodspecs() {
 }
 
 let bottleneck = (args) => new Bottleneck(args)
+let rateLimitedGithubCDNRequest = bottleneck({ maxConcurrent: 10 }).wrap(request)
 
 async function parseDeprecationsImpl(req, pods, shardList) {
   try {
@@ -84,7 +85,7 @@ async function parseDeprecationsImpl(req, pods, shardList) {
     let deprecations = pods.map(async pod => {
       let encodedPodName = encodeURIComponent(pod.name)
       let path = ['Specs', ...shardList, encodedPodName, pod.version, `${encodedPodName}.podspec.json`].join('/')
-      let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
+      let [response, body] = await rateLimitedGithubCDNRequest({ url: githubCDNProxyUrl(req, path) })
       // console.log(`Body: ${body}`)
       let json = JSON.parse(body)
       if (json.deprecated) {
