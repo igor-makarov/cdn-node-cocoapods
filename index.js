@@ -47,7 +47,9 @@ function printRateLimit(response) {
 }
 
 function githubProxyUrl(req, path) {
-  return `${req.protocol}://${req.get('host')}/${token}/${path}`
+  let newPath = `${req.protocol}://${req.get('host')}/${token}/${path}`
+  console.log(`new path: ${newPath}`)
+  return newPath
 }
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
