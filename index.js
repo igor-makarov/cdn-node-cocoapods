@@ -65,7 +65,9 @@ function githubProxyUrl(req, path) {
 }
 
 function githubCDNProxyUrl(req, path) {
-  return `${process.env.GH_CDN || selfProxyUrlPrefix(req)}/${path}`
+  let result = `${process.env.GH_CDN || selfProxyUrlPrefix(req)}/${path}`
+  console.log(result)
+  return result
 }
 
 var deprecatedPodspecs = new Set()
