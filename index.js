@@ -80,6 +80,7 @@ let bottleneck = (args) => new Bottleneck(args)
 
 async function parseDeprecationsImpl(req, pods, shardList) {
   try {
+    let result = new Set()
     let deprecations = pods.map(async pod => {
       let path = ['Specs', ...shardList, pod.name, pod.version, `${pod.name}.podspec.json`].join('/')
       let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
@@ -87,10 +88,11 @@ async function parseDeprecationsImpl(req, pods, shardList) {
       let json = JSON.parse(body)
       if (json.deprecated) {
         console.log(`Deprecated: ${path}`)
-        deprecatedPodspecs[shardList].add(path)
+        result.add(path)
       }
     })
     await Promise.all(deprecations)
+    deprecatedPodspecs[shardList] = result
     // console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
     console.log(`Deprecation poll error: ${error}`)
