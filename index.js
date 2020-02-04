@@ -82,15 +82,15 @@ async function parseDeprecationsImpl(req, shardTwo, shardSHA) {
   try {
     let deprecationUrl = githubProxyUrl(req, `deprecations/${shardSHA}/${shardTwo.join('/')}`)
     let [response, deprecated] = await request({ url: deprecationUrl })
-    deprecatedPodspecs[shardTwo] = JSON.parse(deprecated)
+    deprecatedPodspecs[shardTwo] = deprecated.split('\n').filter(s => s !== '')
     // console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
-    console.log(`Deprecation poll error: ${error}`)
+    console.log(`Deprecation poll error: ${shardTwo} ${error}`)
   }
   console.log(`Parsed Deprecations: ${shardTwo}`)
 }
 
-let parseDeprecations = bottleneck({ maxConcurrent: 5 }).wrap(parseDeprecationsImpl)
+let parseDeprecations = bottleneck({ maxConcurrent: 2 }).wrap(parseDeprecationsImpl)
 
 async function parsePods(req, shardTwo, shardSHA, ifNoneMatch = null) {
   // console.log(shardSHA)
@@ -192,7 +192,9 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix`, async (req, res, next
     res.sendStatus(304)
     return  
   }
-  let result = new Set()
+  // let result = new Set()
+  res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
+  res.setHeader('ETag', response.headers.etag)
   let deprecations = pods.map(async pod => {
     try {
       let encodedPodName = encodeURIComponent(pod.name)
@@ -202,16 +204,17 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix`, async (req, res, next
       let json = JSON.parse(body)
       if (json.deprecated) {
         console.log(`Deprecated: ${path}`)
-        result.add(path)
+        res.write(path + '\n')
+        // result.add(path)
+      } else {
+        res.write('')
       }
     } catch (error) {
       console.log(error)
     }
   })
   await Promise.all(deprecations)
-  res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
-  res.setHeader('ETag', response.headers.etag)
-  res.send([...result].sort())
+  res.end()
 })
 
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
