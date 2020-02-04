@@ -91,8 +91,7 @@ async function parseDeprecationsImpl(req, pods, shardList) {
       }
     })
     await Promise.all(deprecations)
-    // if still empty
-    console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
+    // console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
     console.log(`Deprecation poll error: ${error}`)
   }
