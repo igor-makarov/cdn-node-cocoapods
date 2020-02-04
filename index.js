@@ -66,7 +66,7 @@ function githubProxyUrl(req, path) {
 
 function githubCDNProxyUrl(req, path) {
   let result = `${process.env.GH_CDN || selfProxyUrlPrefix(req)}/${path}`
-  console.log(result)
+  // console.log(result)
   return result
 }
 
