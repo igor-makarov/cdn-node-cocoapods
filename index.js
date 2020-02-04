@@ -77,7 +77,7 @@ function allDeprecatedPodspecs() {
 }
 
 let bottleneck = (args) => new Bottleneck(args)
-let rateLimitedPodspecRetriever = bottleneck({ maxConcurrent: 100 }).wrap(request)
+let rateLimitedPodspecRetriever = bottleneck({ maxConcurrent: 10 }).wrap(request)
 
 async function parseDeprecations(req, pods, shardList) {
   try {
