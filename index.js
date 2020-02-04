@@ -87,13 +87,11 @@ async function parseDeprecationsImpl(req, pods, shardList) {
       let json = JSON.parse(body)
       if (json.deprecated) {
         console.log(`Deprecated: ${path}`)
-        deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
         deprecatedPodspecs[shardList].add(path)
       }
     })
     await Promise.all(deprecations)
     // if still empty
-    deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
     console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
     console.log(`Deprecation poll error: ${error}`)
@@ -155,7 +153,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
       res.sendStatus(304)
       if (!deprecatedPodspecs[shardList]) {
         let pods = parsePods()
-        await parseDeprecations(req, pods, shardList)
+        deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
+        parseDeprecations(req, pods, shardList)
       }
       return
     }
@@ -176,7 +175,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', response.headers['etag'])
     res.send(versions.join('\n'))
-    await parseDeprecations(req, pods, shardList)
+    deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
+    parseDeprecations(req, pods, shardList)
   } catch (error) {
     console.log(error)
     next(error)
