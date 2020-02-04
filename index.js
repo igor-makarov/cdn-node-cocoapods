@@ -70,7 +70,32 @@ function githubCDNProxyUrl(req, path) {
   return result
 }
 
-var deprecatedPodspecs = new Set()
+var deprecatedPodspecs = {}
+function allDeprecatedPodspecs() {
+  return Object.values(deprecatedPodspecs).map(l => [...l]).flat().sort()
+}
+
+async function parseDeprecations(req, pods, shardList) {
+  try {
+    let deprecations = pods.map(async pod => {
+      let path = ['Specs', ...shardList, pod.name, pod.version, `${pod.name}.podspec.json`].join('/')
+      let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
+      // console.log(`Body: ${body}`)
+      let json = JSON.parse(body)
+      if (json.deprecated) {
+        console.log(`Deprecated: ${path}`)
+        deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
+        deprecatedPodspecs[shardList].add(path)
+      }
+    })
+    await Promise.all(deprecations)
+    console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
+  } catch (error) {
+    console.log(`Deprecation poll error: ${error}`)
+  }
+  console.log(`Parsed Deprecations: ${shardList}`)
+}
+
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
@@ -95,16 +120,36 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let shardUrl = githubProxyUrl(req, `tree/${shardSHA.sha}`)
 
     let shardRequest = { url: shardUrl }
-    if (req.headers['if-none-match']) {
+    if (req.headers['if-none-match'] && deprecatedPodspecs[shardList]) {
       shardRequest.headers = { 'if-none-match': req.headers['if-none-match'] }
     }
     let [response, body] = await request(shardRequest)
+
+    function parsePods() {
+      try {
+        console.log(`Received body ${shardList}`)
+        let json = JSON.parse(body)
+        console.log(`truncated: ${json.truncated}`)
+        let pods = json.tree
+          .map(entry => entry.path.split('/'))
+          .filter(p => p.length == 3 && p[0] === suffix)
+          .map(([s, n, v]) => { return { name: n, version: v } })
+        return pods
+      } catch (error) {
+        console.log(`Body: ${body} headers: ${Object.entries(response.headers)}`)
+        throw error
+      }
+    }
 
     // console.log(response.headers)
     if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
       res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
       res.setHeader('ETag', response.headers['etag'])
       res.sendStatus(304)
+      if (!deprecatedPodspecs[shardList]) {
+        let pods = parsePods()
+        await parseDeprecations(req, pods, shardList)
+      }
       return
     }
 
@@ -116,43 +161,15 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
     // console.log(body)
-    try {
-      console.log(`Received body ${shardList}`)
-      let json = JSON.parse(body)
-      console.log(`truncated: ${json.truncated}`)
-      let pods = json.tree
-        .map(entry => entry.path.split('/'))
-        .filter(p => p.length == 3 && p[0] === suffix)
-        .map(([s, n, v]) => { return { name: n, version: v } })
 
-      let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
-      console.log(`Parsed ${shardList}`)
+    let pods = parsePods()
+    let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
+    console.log(`Parsed ${shardList}`)
 
-      res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
-      res.setHeader('ETag', response.headers['etag'])
-      res.send(versions.join('\n'))
-
-      try {
-        let deprecations = pods.map(async pod => {
-          let path = ['Specs', ...shardList, pod.name, pod.version, `${pod.name}.podspec.json`].join('/')
-          let [response, body] = await request({ url: githubCDNProxyUrl(req, path) })
-          // console.log(`Body: ${body}`)
-          let json = JSON.parse(body)
-          if (json.deprecated) {
-            console.log(`Deprecated: ${path}`)
-            deprecatedPodspecs.add(path)
-          }
-        })
-        await Promise.all(deprecations)
-        console.log(`Current deprecations: ${[...deprecatedPodspecs]}`)
-      } catch (error) {
-        console.log(`Deprecation poll error: ${error}`)
-      }
-      console.log(`Parsed Deprecations: ${shardList}`)
-    } catch (error) {
-      console.log(`Body: ${body} headers: ${Object.entries(response.headers)}`)
-      throw error
-    }
+    res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
+    res.setHeader('ETag', response.headers['etag'])
+    res.send(versions.join('\n'))
+    await parseDeprecations(req, pods, shardList)
   } catch (error) {
     console.log(error)
     next(error)
@@ -160,7 +177,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
 })
 
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
-  let list = [...deprecatedPodspecs].join('\n')
+  // console.log(allDeprecatedPodspecs())
+  let list = allDeprecatedPodspecs().join('\n')
   let listEtag = etag(list)
   console.log(listEtag)
   if (req.headers["if-none-match"] && req.headers["if-none-match"] === listEtag) {
