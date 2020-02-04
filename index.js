@@ -47,7 +47,9 @@ function printRateLimit(response) {
 }
 
 function githubProxyUrl(req, path) {
-  let newPath = `${req.protocol}://${req.get('host')}/${token}/${path}`
+  let host = req.get('host')
+  let protocol = host === 'localhost:3000' ? 'http' : 'https'
+  let newPath = `${protocol}://${host}/${token}/${path}`
   console.log(`new path: ${newPath}`)
   return newPath
 }
