@@ -7,6 +7,10 @@ const compression = require('compression')
 const stats = require('./stats')
 const responseTime = require('response-time')
 
+if (process.env.PRETTY_LOG) {
+  require('log-timestamp')
+}
+
 const token = process.env.GH_TOKEN
 const port = process.env.PORT
 if (!token) {
