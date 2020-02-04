@@ -95,18 +95,25 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
     // console.log(body)
-    let json = JSON.parse(body)
-    console.log(`truncated: ${json.truncated}`)
-    let pods = json.tree
-      .map(entry => entry.path.split('/'))
-      .filter(p => p.length == 3 && p[0] === suffix)
-      .map(([s, n, v]) => { return { name: n, version: v } })
+    try {
+      let json = JSON.parse(body)
+      console.log(`truncated: ${json.truncated}`)
+      let pods = json.tree
+        .map(entry => entry.path.split('/'))
+        .filter(p => p.length == 3 && p[0] === suffix)
+        .map(([s, n, v]) => { return { name: n, version: v } })
 
-    let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
+      let versions = Object.entries(pods.grouped()).map(([k,v]) => [k, ...v].join('/'))
 
-    res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
-    res.setHeader('ETag', response.headers['etag'])
-    res.send(versions.join('\n'))
+      res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
+      res.setHeader('ETag', response.headers['etag'])
+      res.send(versions.join('\n'))
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        console.log(body)
+      }
+      throw error
+    }
   } catch (error) {
     console.log(error)
     next(error)
@@ -175,6 +182,8 @@ function githubRequestProxy(pathRewrite, maxAge) {
     },
     onProxyRes: (proxyRes, req, res) => {
       printRateLimit(proxyRes)
+      if (proxyRes)
+      console.log(`GH API status: ${proxyRes.statusCode}`)
       proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
     }
   })
