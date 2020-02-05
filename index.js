@@ -85,7 +85,7 @@ async function parseDeprecationsImpl(req, shardList, shardSHA) {
     let [response, deprecated] = await request({ url: deprecationUrl })
     if (response.statusCode != 200) {
       console.log(`Deprecations returned error: ${shardList} ${response.statusCode} `)
-      deprecatedPodspecs[shardList] = null
+      delete deprecatedPodspecs[shardList]
       return
     }
     let deprecations = deprecated.split('\n').filter(s => s !== '')
