@@ -243,6 +243,10 @@ app.get('/deprecated_podspecs.txt', async (req, res, next) => {
   res.send(list)
 })
 
+app.get('/deprecation_shard_count', async (req, res, next) => {
+  res.send(Object.keys(deprecatedPodspecs).length + '')
+})
+
 app.get('/all_pods.txt', async (req, res, next) => {
   try {
     let shardSHAUrl = githubProxyUrl(req, 'latest')
