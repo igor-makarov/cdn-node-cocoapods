@@ -233,16 +233,19 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
   // console.log(allDeprecatedPodspecs())
   let list = allDeprecatedPodspecs().join('\n')
+  let deprecationShardCount = Object.values(deprecationShardPolls).filter(v => v === 'done').length
   let listEtag = etag(list)
   console.log(listEtag)
   if (req.headers["if-none-match"] && req.headers["if-none-match"] === listEtag) {
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', listEtag)
+    res.setHeader('X-Deprecation-Shards', deprecationShardCount)
     res.sendStatus(304)
     return
   }
   res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
   res.setHeader('ETag', listEtag)
+  res.setHeader('X-Deprecation-Shards', deprecationShardCount)
   res.send(list)
 })
 
