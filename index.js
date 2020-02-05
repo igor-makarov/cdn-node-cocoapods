@@ -211,13 +211,14 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
   let deprecations = pods.filter(pod => pod.suffix === suffix).map(async pod => {
     try {
       let encodedPodName = encodeURIComponent(pod.name)
-      let path = ['Specs', ...shardTwo, pod.suffix, encodedPodName, pod.version, `${encodedPodName}.podspec.json`].join('/')
+      let encodedPathComponents = ['Specs', ...shardTwo, pod.suffix, encodedPodName, pod.version, `${encodedPodName}.podspec.json`]
+      let path = encodedPathComponents.join('/')
       let [podResponse, body] = await githubCDNProxyRequest({ url: githubCDNProxyUrl(req, path) })
       // console.log(`Body: ${body}`)
       // let json = JSON.parse(body)
       if (deprecationRegex.test(body)) {
         // console.log(`Deprecated: ${path}`)
-        result.add(path)
+        result.add(encodedPathComponents.map(decodeURIComponent).join('/'))
       }
     } catch (error) {
       console.log(error)
