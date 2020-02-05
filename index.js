@@ -305,7 +305,11 @@ function githubRequestProxy(pathRewrite, maxAge) {
     onProxyRes: (proxyRes, req, res) => {
       printRateLimit(proxyRes)
       // console.log(`GH API status: ${proxyRes.statusCode}`)
-      proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
+      if (proxyRes.statusCode == 200 || proxyRes.statusCode == 304) {
+        proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
+      } else {
+        proxyRes.headers['Cache-Control'] = `no-cache`
+      }
     }
   })
 }
