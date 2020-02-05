@@ -82,6 +82,11 @@ async function parseDeprecationsImpl(req, shardList, shardSHA) {
   try {
     let deprecationUrl = githubProxyUrl(req, `deprecations/${shardSHA}/${shardList.join('/')}`)
     let [response, deprecated] = await request({ url: deprecationUrl })
+    if (response.statusCode != 200) {
+      console.log(`Deprecations returned error: ${shardList} ${response.statusCode} `)
+      deprecatedPodspecs[shardList] = null
+      return
+    }
     deprecatedPodspecs[shardList] = deprecated.split('\n').filter(s => s !== '')
     // console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
