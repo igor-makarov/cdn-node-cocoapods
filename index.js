@@ -193,6 +193,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 })
 
 let githubCDNProxyRequest = bottleneck({ maxConcurrent: 50 }).wrap(request)
+let deprecationRegex = /\s\"deprecated(|_in_favor_of)\": /
 app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, res, next) => {
   let maxAge = 7 * 24 * 60 * 60
   let shardSHA = req.params.tree_sha
@@ -214,7 +215,7 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
       let [podResponse, body] = await githubCDNProxyRequest({ url: githubCDNProxyUrl(req, path) })
       // console.log(`Body: ${body}`)
       // let json = JSON.parse(body)
-      if (body.includes('"deprecated": true')) {
+      if (deprecationRegex.test(body)) {
         // console.log(`Deprecated: ${path}`)
         result.add(path)
       }
