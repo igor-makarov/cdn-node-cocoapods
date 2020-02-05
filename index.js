@@ -72,8 +72,9 @@ function githubCDNProxyUrl(req, path) {
 }
 
 var deprecatedPodspecs = {}
+var deprecatedPodspecsFinal = new Set()
 function allDeprecatedPodspecs() {
-  return Object.values(deprecatedPodspecs).map(l => [...l]).flat().sort()
+  return [...deprecatedPodspecsFinal].sort()
 }
 
 let bottleneck = (args) => new Bottleneck(args)
@@ -87,7 +88,9 @@ async function parseDeprecationsImpl(req, shardList, shardSHA) {
       deprecatedPodspecs[shardList] = null
       return
     }
-    deprecatedPodspecs[shardList] = deprecated.split('\n').filter(s => s !== '')
+    let deprecations = deprecated.split('\n').filter(s => s !== '')
+    deprecatedPodspecs[shardList] = deprecations
+    deprecations.forEach(d => deprecatedPodspecsFinal.add(d))
     // console.log(`Current deprecations: ${allDeprecatedPodspecs()}`)
   } catch (error) {
     console.log(`Deprecation poll error: ${shardList} ${error}`)
