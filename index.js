@@ -156,9 +156,9 @@ app.get(shardUrlRegex, async (req, res, next) => {
       res.sendStatus(304)
       if (!deprecatedPodspecs[shardList]) {
         deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
-        setTimeout(() => {
-          parseDeprecations(req, shardList, shardSHA)
-        }, 10000)
+        // setTimeout(() => {
+        //   parseDeprecations(req, shardList, shardSHA)
+        // }, 10000)
       }
       return
     }
@@ -180,9 +180,9 @@ app.get(shardUrlRegex, async (req, res, next) => {
     res.setHeader('ETag', response.headers['etag'])
     res.send(versions.join('\n'))
     deprecatedPodspecs[shardList] = deprecatedPodspecs[shardList] || new Set()
-    setTimeout(() => {
-      parseDeprecations(req, shardList, shardSHA)
-    }, 10000)
+    // setTimeout(() => {
+    //   parseDeprecations(req, shardList, shardSHA)
+    // }, 10000)
   } catch (error) {
     console.log(error)
     next(error)
