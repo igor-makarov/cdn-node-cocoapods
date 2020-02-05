@@ -180,12 +180,13 @@ app.get(shardUrlRegex, async (req, res, next) => {
   }
 })
 
+let githubCDNProxyRequest = bottleneck({ maxConcurrent: 50 }).wrap(request)
 app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, res, next) => {
   let maxAge = 7 * 24 * 60 * 60
   let shardSHA = req.params.tree_sha
   let shardTwo = [req.params.prefix, req.params.infix]
   let suffix = req.params.suffix
-  console.log(`shardSha: ${shardSHA}`)
+  console.log(`${[...shardTwo, suffix]} shardSha: ${shardSHA}`)
   let [response, pods] = await parsePods(req, shardTwo, shardSHA, req.headers['if-none-match'])
   if (response.statusCode == 304) {
     res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
@@ -193,29 +194,28 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
     res.sendStatus(304)
     return  
   }
-  // let result = new Set()
-  res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
-  res.setHeader('ETag', response.headers.etag)
+  let result = new Set()
   let deprecations = pods.filter(pod => pod.suffix === suffix).map(async pod => {
     try {
       let encodedPodName = encodeURIComponent(pod.name)
       let path = ['Specs', ...shardTwo, pod.suffix, encodedPodName, pod.version, `${encodedPodName}.podspec.json`].join('/')
-      let [podResponse, body] = await request({ url: githubCDNProxyUrl(req, path) })
+      let [podResponse, body] = await githubCDNProxyRequest({ url: githubCDNProxyUrl(req, path) })
       // console.log(`Body: ${body}`)
-      let json = JSON.parse(body)
-      if (json.deprecated) {
-        console.log(`Deprecated: ${path}`)
-        res.write(path + '\n')
-        // result.add(path)
-      } else {
-        res.write('')
+      // let json = JSON.parse(body)
+      if (body.includes('"deprecated": true')) {
+        // console.log(`Deprecated: ${path}`)
+        result.add(path)
       }
     } catch (error) {
       console.log(error)
     }
   })
   await Promise.all(deprecations)
-  res.end()
+  let resultList = [...result]
+  console.log(`${[...shardTwo, suffix]} Deprecated: ${resultList.length}`)
+  res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
+  res.setHeader('ETag', response.headers.etag)
+  res.send(resultList.join('\n'))
 })
 
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
