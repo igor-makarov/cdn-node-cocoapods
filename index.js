@@ -95,7 +95,7 @@ async function parseDeprecationsImpl(req, shardList, shardSHA) {
   console.log(`Parsed Deprecations: ${shardList}`)
 }
 
-let parseDeprecations = bottleneck({ maxConcurrent: 10 }).wrap(parseDeprecationsImpl)
+let parseDeprecations = bottleneck({ maxConcurrent: 5 }).wrap(parseDeprecationsImpl)
 
 async function parsePods(req, shardTwo, shardSHA, ifNoneMatch = null) {
   // console.log(shardSHA)
