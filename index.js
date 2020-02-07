@@ -8,7 +8,7 @@ const stats = require('./stats')
 const responseTime = require('response-time')
 const etag = require('etag')
 const Bottleneck = require('bottleneck');
-const Git = require('nodegit')
+const shell = require('shelljs')
 const fs = require('fs')
 
 if (process.env.PRETTY_LOG) {
@@ -25,14 +25,11 @@ if (!port) {
   throw new Error('No $PORT provided')
 }
 
-
-(async function loadGit() {
-  let gitDir = process.env.SPECS_DIR || './specs'
-  if (!fs.existsSync(gitDir)) {
-    await Git.Clone("https://github.com/CocoaPods/Specs", gitDir)
-    console.log('finished clone')
-  }
-})()
+let gitDir = process.env.SPECS_DIR || './specs'
+if (!fs.existsSync(gitDir)) {
+  shell.exec('git clone https://github.com/CocoaPods/Specs ./specs --verbose')
+  console.log('finished clone')
+}
 
 const request = pify(requestBase, { multiArgs: true })
 
