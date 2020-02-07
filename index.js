@@ -25,12 +25,6 @@ if (!port) {
   throw new Error('No $PORT provided')
 }
 
-let gitDir = process.env.SPECS_DIR || './specs'
-if (!fs.existsSync(gitDir)) {
-  shell.exec('git clone https://github.com/CocoaPods/Specs ./specs --verbose')
-  console.log('finished clone')
-}
-
 const request = pify(requestBase, { multiArgs: true })
 
 const app = express()
@@ -367,3 +361,9 @@ app.get('//CocoaPods-version.yml', ghProxy)
 // app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+
+let gitDir = process.env.SPECS_DIR || './specs'
+if (!fs.existsSync(gitDir)) {
+  shell.exec('git clone https://github.com/CocoaPods/Specs ./specs --verbose', {async:true})
+  console.log('finished clone')
+}
