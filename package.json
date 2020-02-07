@@ -17,6 +17,7 @@
     "express": "^4.17.1",
     "http-proxy-middleware": "^0.20.0",
     "log-timestamp": "^0.3.0",
+    "nodegit": "^0.26.4",
     "pify": "^4.0.1",
     "request": "^2.88.0",
     "response-time": "^2.3.2",
