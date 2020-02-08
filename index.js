@@ -225,7 +225,7 @@ async function finalBoot () {
       let elapsed = (new Date()) - startTime
       if (elapsed < minWaitTime) {
         let waitTime = minWaitTime - elapsed
-        console.log(`Waiting ${waitTime/1000}s`)
+        // console.log(`Waiting ${waitTime/1000}s`)
         await wait(waitTime)
       }
     }
