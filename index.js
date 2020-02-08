@@ -24,12 +24,10 @@ const stats = require('./stats')
 const responseTime = require('response-time')
 const etag = require('etag')
 const Bottleneck = require('bottleneck');
-const githubRequestProxy = require('./githubAPIProxy')(token)
 const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
 const githubCDNRequest = require('./githubCDNRequest')(process.env.GH_CDN)
-
-const request = pify(requestBase, { multiArgs: true })
+const boot = require('./boot')(token)
 
 const app = express()
 app.use(responseTime())
@@ -50,6 +48,7 @@ Array.prototype.flat = function() {
   return this.reduce((acc, val) => acc.concat(val), []);
 }
 
+var shards = {}
 var deprecationShardPolls = {}
 var deprecatedPodspecsFinal = new Set()
 function allDeprecatedPodspecs() {
@@ -284,6 +283,7 @@ app.get('/all_pods.txt', async (req, res, next) => {
   }
 })
 
+const githubRequestProxy = require('./githubAPIProxy')(token)
 app.get(`^/${token}/latest/?*`, githubRequestProxy((path, req) => {
     return path.replace(/^\/.*\/latest/, '/contents/Specs')
 }, 60))
@@ -309,3 +309,11 @@ app.get('//CocoaPods-version.yml', ghProxy)
 // app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+
+async function finalBoot () {
+  while (true) {
+    await boot(shards)
+  }
+}
+
+finalBoot()
