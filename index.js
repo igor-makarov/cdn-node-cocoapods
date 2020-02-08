@@ -118,7 +118,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let [responseSha, bodySHA] = await otherSelfCDNRequest(`latest/${prefix}`)
+    let [responseSha, bodySHA] = await githubAPIRequest(`latest/${prefix}`)
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       console.log(`error from latest: ${responseSha.statusCode}`)
@@ -247,7 +247,7 @@ app.get('/all_pods.txt', async (req, res, next) => {
     if (req.headers['if-none-match']) {
       shardSHAParams.headers = { 'if-none-match': req.headers['if-none-match'] }
     }
-    let [responseSha, bodySHA] = await otherSelfCDNRequest('latest', shardSHAParams)
+    let [responseSha, bodySHA] = await githubAPIRequest('latest', shardSHAParams)
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       console.log(`error from latest: ${responseSha.statusCode}`)
