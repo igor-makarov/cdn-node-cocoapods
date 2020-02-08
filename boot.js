@@ -112,7 +112,7 @@ module.exports = function (token) {
   return async function(shards) { 
     let latest = await getLatest()
     for ([prefix, sha] of latest.map(p => [p.name, p.sha])) {
-      console.log(`prefix: ${prefix}, sha: ${sha}`)
+      // console.log(`prefix: ${prefix}, sha: ${sha}`)
       if (shards[prefix] && shards[prefix].sha === sha) {
         console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
         // getDeprecationsLimited(prefix, shards[prefix])
