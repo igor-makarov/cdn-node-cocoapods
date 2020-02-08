@@ -58,7 +58,7 @@ module.exports = function (token) {
           result.add(encodedPathComponents.map(decodeURIComponent).join('/'))
         }
         count += 1
-        if (count % 100 == 0) {
+        if (count % 500 == 0) {
           console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations`)
         }
       } catch (error) {
@@ -66,6 +66,7 @@ module.exports = function (token) {
       }
     })
     await Promise.all(deprecations)
+    console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations - done!`)
     shard.deprecations = [...result]
   }
 
