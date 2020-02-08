@@ -306,6 +306,7 @@ let ghProxy = proxyTo('https://raw.githubusercontent.com/CocoaPods/Specs/master/
 let netlifyProxy = (maxAge) => proxyTo('https://cdn.cocoapods.org/', maxAge)
 app.get('/CocoaPods-version.yml', ghProxy)
 app.get('//CocoaPods-version.yml', ghProxy)
+app.get('/Specs/?*', ghProxy)
 // app.get('/all_pods.txt', netlifyProxy(10 * 60))
 // app.get('/deprecated_podspecs.txt', netlifyProxy(60 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
