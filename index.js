@@ -6,6 +6,7 @@ if (process.env.PRETTY_LOG) {
 
 const token = process.env.GH_TOKEN
 const port = process.env.PORT
+
 if (!token) {
   throw new Error('No $GH_TOKEN provided')
 }
@@ -23,8 +24,9 @@ const stats = require('./stats')
 const responseTime = require('response-time')
 const etag = require('etag')
 const Bottleneck = require('bottleneck');
-const githubRequestProxy = require('./githubAPI')(token)
-
+const githubRequestProxy = require('./githubAPIProxy')(token)
+const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
+const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
 
 const request = pify(requestBase, { multiArgs: true })
 
@@ -47,24 +49,11 @@ Array.prototype.flat = function() {
   return this.reduce((acc, val) => acc.concat(val), []);
 }
 
-function selfProxyUrlPrefix(req, path) {
-  let host = req.get('host')
-  let protocol = host === 'localhost:3000' ? 'http' : 'https'
-  let newPath = `${protocol}://${host}`
-  // console.log(`new path: ${newPath}`)
-  return newPath
-}
-
-function githubProxyUrl(req, path) {
-  return `${selfProxyUrlPrefix(req)}/${token}/${path}`
-}
-
 function githubCDNProxyUrl(req, path) {
-  let result = `${process.env.GH_CDN || selfProxyUrlPrefix(req)}/${path}`
+  let result = `${process.env.GH_CDN}/${path}`
   // console.log(result)
   return result
 }
-
 var deprecationShardPolls = {}
 var deprecatedPodspecsFinal = new Set()
 function allDeprecatedPodspecs() {
@@ -75,8 +64,7 @@ let bottleneck = (args) => new Bottleneck(args)
 
 async function parseDeprecationsImpl(req, shardList, shardSHA) {
   try {
-    let deprecationUrl = githubProxyUrl(req, `deprecations/${shardSHA}/${shardList.join('/')}`)
-    let [response, deprecated] = await request({ url: deprecationUrl })
+    let [response, deprecated] = await otherSelfCDNRequest(`deprecations/${shardSHA}/${shardList.join('/')}`)
     if (response.statusCode != 200) {
       console.log(`Deprecations returned error: ${shardList} ${response.statusCode} `)
       delete deprecationShardPolls[shardList]
@@ -96,12 +84,11 @@ let parseDeprecations = bottleneck({ maxConcurrent: 5 }).wrap(parseDeprecationsI
 
 async function parsePods(req, shardTwo, shardSHA, ifNoneMatch = null) {
   // console.log(shardSHA)
-  let shardUrl = githubProxyUrl(req, `tree/${shardSHA}`)
-  let shardRequest = { url: shardUrl }
+  let shardRequestParams = {}
   if (ifNoneMatch) {
-    shardRequest.headers = { 'if-none-match': ifNoneMatch }
+    shardRequestParams.headers = { 'if-none-match': ifNoneMatch }
   }
-  let [response, body] = await request(shardRequest)
+  let [response, body] = await githubAPIRequest(`tree/${shardSHA}`, shardRequestParams)
 
   if (response.statusCode == 304) {
     return [response, []]
@@ -131,8 +118,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let shardSHAUrl = githubProxyUrl(req, `latest/${prefix}`)
-    let [responseSha, bodySHA] = await request({ url: shardSHAUrl })
+    let [responseSha, bodySHA] = await otherSelfCDNRequest(`latest/${prefix}`)
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       console.log(`error from latest: ${responseSha.statusCode}`)
@@ -257,12 +243,11 @@ app.get('/deprecation_shard_count', async (req, res, next) => {
 
 app.get('/all_pods.txt', async (req, res, next) => {
   try {
-    let shardSHAUrl = githubProxyUrl(req, 'latest')
-    let shardSHARequest = { url: shardSHAUrl }
+    let shardSHAParams = {}
     if (req.headers['if-none-match']) {
-      shardSHARequest.headers = { 'if-none-match': req.headers['if-none-match'] }
+      shardSHAParams.headers = { 'if-none-match': req.headers['if-none-match'] }
     }
-    let [responseSha, bodySHA] = await request(shardSHARequest)
+    let [responseSha, bodySHA] = await otherSelfCDNRequest('latest', shardSHAParams)
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       console.log(`error from latest: ${responseSha.statusCode}`)
@@ -281,8 +266,7 @@ app.get('/all_pods.txt', async (req, res, next) => {
     let shas = JSON.parse(bodySHA).map(s => s.sha)
 
     let promises = shas.map(async sha => {
-      let shardUrl = githubProxyUrl(req, `tree/${sha}`)
-      let [response, body] = await request({ url: shardUrl })
+      let [response, body] = await githubAPIRequest(`tree/${sha}`)
       let json = JSON.parse(body)
       console.log(`truncated: ${json.truncated}`)
       let pods = json.tree
