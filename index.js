@@ -52,35 +52,6 @@ function allDeprecatedPodspecs() {
   return Object.values(shards).map(s => s.deprecations || []).flat().sort()
 }
 
-let bottleneck = (args) => new Bottleneck(args)
-
-async function parsePods(shardTwo, shardSHA, ifNoneMatch = null) {
-  // console.log(shardSHA)
-  let shardRequestParams = {}
-  if (ifNoneMatch) {
-    shardRequestParams.headers = { 'if-none-match': ifNoneMatch }
-  }
-  let response = await githubAPIRequest(`tree/${shardSHA}`, shardRequestParams)
-
-  if (response.statusCode == 304) {
-    return [response, []]
-  }
-
-  try {
-    let body = response.body
-    console.log(`Received body ${shardTwo}`)
-    let json = JSON.parse(body)
-    console.log(`truncated: ${json.truncated}`)
-    let pods = json.tree
-      .map(entry => entry.path.split('/'))
-      .filter(p => p.length == 3)
-      .map(([s, n, v]) => { return { name: n, suffix: s, version: v } })
-    return [response, pods]
-  } catch (error) {
-    console.log(`Body: ${body} headers: ${Object.entries(response.headers)}`)
-    throw error
-  }
-}
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
@@ -88,45 +59,34 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let shardList = shardUrlRegex.exec(req.url).slice(1)
     let shardTwo = shardList.slice(0, 2)
     let prefix = shardList[0]
-    let infix = shardList[1]
-    let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let responseSha = await githubAPIRequest(`latest/${prefix}`)
-    let bodySHA = responseSha.body
+    let shard = shards[prefix]
 
-    if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
-      console.log(`error from latest: ${responseSha.statusCode}`)
+    if (!shard) {
       res.setHeader('Cache-Control', 'no-cache')
-      res.sendStatus(403)
+      res.sendStatus(404)
       return
     }
-    // console.log(bodySHA)
-    let shardSHA = JSON.parse(bodySHA).find(s => s.name === infix).sha
 
-    let [response, pods] = await parsePods(shardTwo, shardSHA, req.headers['if-none-match'])
-
-    // console.log(response.headers)
-    if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
+    let etag = `"${shard.sha}"`
+    if (req.headers['if-none-match'] && req.headers['if-none-match'] === etag) {
       res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
-      res.setHeader('ETag', response.headers['etag'])
+      res.setHeader('ETag', etag)
       res.sendStatus(304)
       return
     }
 
-    if (response.statusCode != 200 && response.statusCode != 304) {
-      console.log(`error from latest: ${response.statusCode}`)
-      res.setHeader('Cache-Control', 'no-cache')
-      res.sendStatus(403)
-      return
-    }
-    // console.log(body)
-
-    let filtered = pods.filter(pod => pod.suffix === suffix)
+    // console.log(shard)
+    let shardPath = shardList.join('/')
+    let filtered = shard.pods
+      .filter(pod => pod.startsWith(shardPath))
+      .map(pod => pod.split('/'))
+      .map(([,,, n, v]) => { return { name: n, version: v } })
     let versions = Object.entries(filtered.grouped()).map(([k,v]) => [k, ...v].join('/'))
     console.log(`Parsed ${shardList}`)
 
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
-    res.setHeader('ETag', response.headers['etag'])
+    res.setHeader('ETag', etag)
     res.send(versions.join('\n'))
   } catch (error) {
     console.log(error)
