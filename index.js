@@ -286,6 +286,11 @@ app.get('/all_pods.txt', async (req, res, next) => {
   }
 })
 
+app.get(`^/${token}/keep_alive`, async (req, res, next) => {
+  console.log('keep-alive received!')
+  res.send('keep-alive')
+})
+
 const githubRequestProxy = require('./githubAPIProxy')(token)
 app.get(`^/${token}/latest/?*`, githubRequestProxy((path, req) => {
     return path.replace(/^\/.*\/latest/, '/contents/Specs')
@@ -312,6 +317,11 @@ app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPo
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
 async function finalBoot () {
+  setInterval(() => {
+    otherSelfCDNRequest('keep_alive')
+  }, 30 * 1000)
+
+
   try {
     let minWaitTime = 10 * 1000
     while (true) {
