@@ -1,4 +1,6 @@
 let githubCDNProxyRequest = require('./githubCDNRequest')
+let Bottleneck = require('bottleneck');
+let bottleneck = (args) => new Bottleneck(args)
 
 let deprecationRegex = /\s\"deprecated(|_in_favor_of)\":/
 function isDeprecated(body) {
@@ -40,6 +42,10 @@ module.exports = function (token) {
   }
 
   async function getDeprecations(prefix, shard) {
+    if (shard.canceled) {
+      console.log(`prefix: ${prefix}, sha: ${sha} - deprecations canceled`)
+      return
+    }
     console.log(`prefix: ${prefix}, sha: ${sha} - parsing ${shard.podspecs.length} podspecs for deprecations`)
     let result = new Set()
     let count = 0
@@ -48,6 +54,9 @@ module.exports = function (token) {
         let encodedPathComponents = ['Specs', ...podspec.split('/')].map(encodeURIComponent)
         let path = encodedPathComponents.join('/')
         let response = await githubCDNProxyRequest(path)
+        if (shard.canceled) {
+          return
+        }
         // console.log(response.httpVersion)
         let body = response.body
         // console.log(`Body: ${body}`)
@@ -64,10 +73,22 @@ module.exports = function (token) {
         console.log(error)
       }
     })
+    if (shard.canceled) {
+      console.log(`prefix: ${prefix}, sha: ${sha} - deprecations canceled`)
+      return
+    }
     await Promise.all(deprecations)
+   
+    if (shard.canceled) {
+      console.log(`prefix: ${prefix}, sha: ${sha} - deprecations canceled`)
+      return
+    }
+
     console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations - done!`)
     shard.deprecations = [...result]
   }
+
+  let getDeprecationsLimited = bottleneck({ maxConcurrent: 1 }).wrap(getDeprecations)
 
   return async function(shards) { 
     let latest = await getLatest()
@@ -77,9 +98,12 @@ module.exports = function (token) {
         console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
         continue
       }
+      if (shards[prefix]) {
+        shards[prefix].canceled = true
+      }
       shards[prefix] = await getTree(prefix, sha)
       console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
-      await getDeprecations(prefix, shards[prefix])
+      getDeprecationsLimited(prefix, shards[prefix])
     }
   }
 }
