@@ -288,6 +288,7 @@ app.get('/all_pods.txt', async (req, res, next) => {
 
 app.get(`^/${token}/keep_alive`, async (req, res, next) => {
   console.log('keep-alive received!')
+  res.setHeader('Cache-Control', 'no-cache')
   res.send('keep-alive')
 })
 
