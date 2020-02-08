@@ -122,7 +122,10 @@ module.exports = function (token) {
       if (shards[prefix]) {
         shards[prefix].canceled = true
       }
+      let oldDeprecations = shards[prefix] ? shards[prefix].deprecations : null
+
       shards[prefix] = await getTree(prefix, sha)
+      shards[prefix].oldDeprecations = oldDeprecations
       console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
       modifiedCount += 1
       getDeprecationsLimited(prefix, shards[prefix])
