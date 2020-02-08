@@ -115,7 +115,7 @@ module.exports = function (token) {
       console.log(`prefix: ${prefix}, sha: ${sha}`)
       if (shards[prefix] && shards[prefix].sha === sha) {
         console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
-        getDeprecationsLimited(prefix, shards[prefix])
+        // getDeprecationsLimited(prefix, shards[prefix])
         continue
       }
       if (shards[prefix]) {
