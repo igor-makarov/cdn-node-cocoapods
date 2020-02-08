@@ -27,6 +27,7 @@ const Bottleneck = require('bottleneck');
 const githubRequestProxy = require('./githubAPIProxy')(token)
 const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
+const githubCDNRequest = require('./githubCDNRequest')(process.env.GH_CDN)
 
 const request = pify(requestBase, { multiArgs: true })
 
@@ -49,11 +50,6 @@ Array.prototype.flat = function() {
   return this.reduce((acc, val) => acc.concat(val), []);
 }
 
-function githubCDNProxyUrl(req, path) {
-  let result = `${process.env.GH_CDN}/${path}`
-  // console.log(result)
-  return result
-}
 var deprecationShardPolls = {}
 var deprecatedPodspecsFinal = new Set()
 function allDeprecatedPodspecs() {
@@ -170,7 +166,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
   }
 })
 
-let githubCDNProxyRequest = bottleneck({ maxConcurrent: 50 }).wrap(request)
+let githubCDNProxyRequest = bottleneck({ maxConcurrent: 50 }).wrap(githubCDNRequest)
 let deprecationRegex = /\s\"deprecated(|_in_favor_of)\":/
 function isDeprecated(body) {
    if (deprecationRegex.test(body)) {
@@ -199,7 +195,7 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
       let encodedPodName = encodeURIComponent(pod.name)
       let encodedPathComponents = ['Specs', ...shardTwo, pod.suffix, encodedPodName, pod.version, `${encodedPodName}.podspec.json`]
       let path = encodedPathComponents.join('/')
-      let [podResponse, body] = await githubCDNProxyRequest({ url: githubCDNProxyUrl(req, path) })
+      let [podResponse, body] = await githubCDNProxyRequest(path)
       // console.log(`Body: ${body}`)
       // let json = JSON.parse(body)
       if (isDeprecated(body)) {
