@@ -79,7 +79,7 @@ module.exports = function (token) {
           result.add(encodedPathComponents.map(decodeURIComponent).join('/'))
         }
         count += 1
-        if (count % 500 == 0) {
+        if (count % 2000 == 0) {
           console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations`)
         }
       } catch (error) {
@@ -111,10 +111,11 @@ module.exports = function (token) {
 
   return async function(shards) { 
     let latest = await getLatest()
+    var modifiedCount = 0
     for ([prefix, sha] of latest.map(p => [p.name, p.sha])) {
       // console.log(`prefix: ${prefix}, sha: ${sha}`)
       if (shards[prefix] && shards[prefix].sha === sha) {
-        console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
+        // console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
         // getDeprecationsLimited(prefix, shards[prefix])
         continue
       }
@@ -123,7 +124,11 @@ module.exports = function (token) {
       }
       shards[prefix] = await getTree(prefix, sha)
       console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
+      modifiedCount += 1
       getDeprecationsLimited(prefix, shards[prefix])
+    }
+    if (modifiedCount == 0) {
+      console.log(`all shards unmodified!`)
     }
   }
 }
