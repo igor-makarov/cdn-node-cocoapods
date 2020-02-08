@@ -1,7 +1,7 @@
 let Bottleneck = require('bottleneck');
 let bottleneck = (args) => new Bottleneck(args)
 let githubCDNRequestBase = require('./githubCDNRequest')(process.env.GH_CDN)
-let githubCDNProxyRequest = bottleneck({ maxConcurrent: 200 }).wrap(githubCDNRequestBase)
+let githubCDNProxyRequest = bottleneck({ maxConcurrent: process.env.GH_CDN_CONCURRENCY }).wrap(githubCDNRequestBase)
 
 let deprecationRegex = /\s\"deprecated(|_in_favor_of)\":/
 function isDeprecated(body) {
