@@ -58,7 +58,7 @@ function allDeprecatedPodspecs() {
 
 let bottleneck = (args) => new Bottleneck(args)
 
-async function parseDeprecationsImpl(req, shardList, shardSHA) {
+async function parseDeprecationsImpl(shardList, shardSHA) {
   try {
     let [response, deprecated] = await otherSelfCDNRequest(`deprecations/${shardSHA}/${shardList.join('/')}`)
     if (response.statusCode != 200) {
@@ -78,7 +78,7 @@ async function parseDeprecationsImpl(req, shardList, shardSHA) {
 
 let parseDeprecations = bottleneck({ maxConcurrent: 5 }).wrap(parseDeprecationsImpl)
 
-async function parsePods(req, shardTwo, shardSHA, ifNoneMatch = null) {
+async function parsePods(shardTwo, shardSHA, ifNoneMatch = null) {
   // console.log(shardSHA)
   let shardRequestParams = {}
   if (ifNoneMatch) {
@@ -125,7 +125,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     // console.log(bodySHA)
     let shardSHA = JSON.parse(bodySHA).find(s => s.name === infix).sha
 
-    let [response, pods] = await parsePods(req, shardTwo, shardSHA, req.headers['if-none-match'])
+    let [response, pods] = await parsePods(shardTwo, shardSHA, req.headers['if-none-match'])
 
     // console.log(response.headers)
     if ((response.statusCode == 200 || response.statusCode == 304) && (response.headers['etag'] == req.headers['if-none-match'])) {
@@ -135,7 +135,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
       if (!deprecationShardPolls[shardList]) {
         deprecationShardPolls[shardList] = deprecationShardPolls[shardList] || 'pending'
         setTimeout(() => {
-          parseDeprecations(req, shardList, shardSHA)
+          parseDeprecations(shardList, shardSHA)
         }, 10000)
       }
       return
@@ -158,7 +158,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
     res.send(versions.join('\n'))
     deprecationShardPolls[shardList] = deprecationShardPolls[shardList] || 'pending'
     setTimeout(() => {
-      parseDeprecations(req, shardList, shardSHA)
+      parseDeprecations(shardList, shardSHA)
     }, 10000)
   } catch (error) {
     console.log(error)
@@ -182,7 +182,7 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
   let shardTwo = [req.params.prefix, req.params.infix]
   let suffix = req.params.suffix
   console.log(`${[...shardTwo, suffix]} shardSha: ${shardSHA}`)
-  let [response, pods] = await parsePods(req, shardTwo, shardSHA, req.headers['if-none-match'])
+  let [response, pods] = await parsePods(shardTwo, shardSHA, req.headers['if-none-match'])
   if (response.statusCode == 304) {
     res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
     res.setHeader('ETag', response.headers.etag)
