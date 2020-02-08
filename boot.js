@@ -1,7 +1,4 @@
-let Bottleneck = require('bottleneck');
-let bottleneck = (args) => new Bottleneck(args)
-let githubCDNRequestBase = require('./githubCDNRequest')(process.env.GH_CDN)
-let githubCDNProxyRequest = bottleneck({ maxConcurrent: process.env.GH_CDN_CONCURRENCY }).wrap(githubCDNRequestBase)
+let githubCDNProxyRequest = require('./githubCDNRequest')
 
 let deprecationRegex = /\s\"deprecated(|_in_favor_of)\":/
 function isDeprecated(body) {
@@ -17,14 +14,14 @@ module.exports = function (token) {
   let githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 
   async function getLatest() {
-    let [, body] = await githubAPIRequest('latest')
-    let parsed = JSON.parse(body)
+    let response = await githubAPIRequest('latest')
+    let parsed = JSON.parse(response.body)
     return parsed
   }
   
   async function getTree(prefix, sha) {
-    let [, body] = await githubAPIRequest(`tree/${sha}`) 
-    let json = JSON.parse(body)
+    let response = await githubAPIRequest(`tree/${sha}`) 
+    let json = JSON.parse(response.body)
 
     let result = {}
     result.sha = json.sha
@@ -50,7 +47,9 @@ module.exports = function (token) {
       try {
         let encodedPathComponents = ['Specs', ...podspec.split('/')].map(encodeURIComponent)
         let path = encodedPathComponents.join('/')
-        let [podResponse, body] = await githubCDNProxyRequest(path)
+        let response = await githubCDNProxyRequest(path)
+        // console.log(response.httpVersion)
+        let body = response.body
         // console.log(`Body: ${body}`)
         // let json = JSON.parse(body)
         if (isDeprecated(body)) {

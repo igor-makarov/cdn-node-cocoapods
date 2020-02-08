@@ -15,9 +15,7 @@ if (!port) {
   throw new Error('No $PORT provided')
 }
 
-const requestBase = require('request')
 const express = require('express')
-const pify = require('pify')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
 const stats = require('./stats')
@@ -26,7 +24,7 @@ const etag = require('etag')
 const Bottleneck = require('bottleneck');
 const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
-const githubCDNRequest = require('./githubCDNRequest')(process.env.GH_CDN)
+const githubCDNRequest = require('./githubCDNRequest')
 const boot = require('./boot')(token)
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -60,7 +58,8 @@ let bottleneck = (args) => new Bottleneck(args)
 
 async function parseDeprecationsImpl(shardList, shardSHA) {
   try {
-    let [response, deprecated] = await otherSelfCDNRequest(`deprecations/${shardSHA}/${shardList.join('/')}`)
+    let response = await otherSelfCDNRequest(`deprecations/${shardSHA}/${shardList.join('/')}`)
+    let deprecated = response.body
     if (response.statusCode != 200) {
       console.log(`Deprecations returned error: ${shardList} ${response.statusCode} `)
       delete deprecationShardPolls[shardList]
@@ -84,13 +83,14 @@ async function parsePods(shardTwo, shardSHA, ifNoneMatch = null) {
   if (ifNoneMatch) {
     shardRequestParams.headers = { 'if-none-match': ifNoneMatch }
   }
-  let [response, body] = await githubAPIRequest(`tree/${shardSHA}`, shardRequestParams)
+  let response = await githubAPIRequest(`tree/${shardSHA}`, shardRequestParams)
 
   if (response.statusCode == 304) {
     return [response, []]
   }
 
   try {
+    let body = response.body
     console.log(`Received body ${shardTwo}`)
     let json = JSON.parse(body)
     console.log(`truncated: ${json.truncated}`)
@@ -114,7 +114,8 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let infix = shardList[1]
     let suffix = shardList[2]
     // console.log(`prefix: ${prefix}`)
-    let [responseSha, bodySHA] = await githubAPIRequest(`latest/${prefix}`)
+    let responseSha = await githubAPIRequest(`latest/${prefix}`)
+    let bodySHA = responseSha.body
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
       console.log(`error from latest: ${responseSha.statusCode}`)
@@ -195,7 +196,8 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:infix/:suffix`, async (req, r
       let encodedPodName = encodeURIComponent(pod.name)
       let encodedPathComponents = ['Specs', ...shardTwo, pod.suffix, encodedPodName, pod.version, `${encodedPodName}.podspec.json`]
       let path = encodedPathComponents.join('/')
-      let [podResponse, body] = await githubCDNProxyRequest(path)
+      let podResponse = await githubCDNProxyRequest(path)
+      let body = podResponse.body
       // console.log(`Body: ${body}`)
       // let json = JSON.parse(body)
       if (isDeprecated(body)) {
@@ -310,16 +312,20 @@ app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPo
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
 async function finalBoot () {
-  let minWaitTime = 10 * 1000
-  while (true) {
-    let startTime = new Date()
-    await boot(shards)
-    let elapsed = (new Date()) - startTime
-    if (elapsed < minWaitTime) {
-      let waitTime = minWaitTime - elapsed
-      console.log(`Waiting ${waitTime/1000}s`)
-      await wait(waitTime)
+  try {
+    let minWaitTime = 10 * 1000
+    while (true) {
+      let startTime = new Date()
+      await boot(shards)
+      let elapsed = (new Date()) - startTime
+      if (elapsed < minWaitTime) {
+        let waitTime = minWaitTime - elapsed
+        console.log(`Waiting ${waitTime/1000}s`)
+        await wait(waitTime)
+      }
     }
+  } catch (error) {
+    console.log(error)
   }
 }
 

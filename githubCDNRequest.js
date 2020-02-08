@@ -1,14 +1,16 @@
-let pify = require('pify')
-let requestBase = require('request')
-let request = pify(requestBase, { multiArgs: true })
+let request = require('./request').http2
+let getEnv = require('./getEnv')
+let Bottleneck = require('bottleneck');
+let bottleneck = (args) => new Bottleneck(args)
 
-module.exports = function (cdnURL) {
-  if (!cdnURL) {
-    throw new Error('No CDN URL provided')
-  }
-  let githubCDNProxyUrl = (path) => `${cdnURL}/${path}`
-  return function (path, params = {}) {
-    params.url = githubCDNProxyUrl(path)
-    return request(params)
-  }
-}
+let cdnURL = getEnv('GH_CDN')
+let cdnConcurrency = getEnv('GH_CDN_CONCURRENCY')
+
+let githubCDNProxyUrl = (path) => `${cdnURL}/${path}`
+
+async function githubCDNRequest(path, params = {}) {
+  params.url = githubCDNProxyUrl(path)
+  return await request(params)
+}  
+
+module.exports = bottleneck({ maxConcurrent: cdnConcurrency }).wrap(githubCDNRequest)
