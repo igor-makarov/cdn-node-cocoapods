@@ -1,15 +1,4 @@
 require('dotenv').config()
-const requestBase = require('request')
-const express = require('express')
-const pify = require('pify')
-const proxy = require('http-proxy-middleware')
-const compression = require('compression')
-const stats = require('./stats')
-const responseTime = require('response-time')
-const etag = require('etag')
-const Bottleneck = require('bottleneck');
-const shell = require('shelljs')
-const fs = require('fs')
 
 if (process.env.PRETTY_LOG) {
   require('log-timestamp')
@@ -24,6 +13,18 @@ if (!token) {
 if (!port) {
   throw new Error('No $PORT provided')
 }
+
+const requestBase = require('request')
+const express = require('express')
+const pify = require('pify')
+const proxy = require('http-proxy-middleware')
+const compression = require('compression')
+const stats = require('./stats')
+const responseTime = require('response-time')
+const etag = require('etag')
+const Bottleneck = require('bottleneck');
+const githubRequestProxy = require('./githubAPI')(token)
+
 
 const request = pify(requestBase, { multiArgs: true })
 
@@ -44,15 +45,6 @@ Array.prototype.grouped = function() {
 
 Array.prototype.flat = function() {
   return this.reduce((acc, val) => acc.concat(val), []);
-}
-
-function printRateLimit(response) {
-  let rateLimit = Object.entries(response.headers).filter(([k, v]) => k.startsWith('x-ratelimit'))
-  if (rateLimit.length > 0) {
-    console.log(rateLimit)
-  } else {
-    console.log(response.body)
-  }
 }
 
 function selfProxyUrlPrefix(req, path) {
@@ -143,7 +135,6 @@ app.get(shardUrlRegex, async (req, res, next) => {
     let [responseSha, bodySHA] = await request({ url: shardSHAUrl })
 
     if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
-      // printRateLimit(responseSha)
       console.log(`error from latest: ${responseSha.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
       res.sendStatus(403)
@@ -168,7 +159,6 @@ app.get(shardUrlRegex, async (req, res, next) => {
       return
     }
 
-    // printRateLimit(response)
     if (response.statusCode != 200 && response.statusCode != 304) {
       console.log(`error from latest: ${response.statusCode}`)
       res.setHeader('Cache-Control', 'no-cache')
@@ -313,28 +303,6 @@ app.get('/all_pods.txt', async (req, res, next) => {
     next(error)
   }
 })
-
-let ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
-function githubRequestProxy(pathRewrite, maxAge) {
-  return proxy({
-    target: ghUrlPrefix,
-    pathRewrite: pathRewrite,
-    changeOrigin: true,
-    onProxyReq: (proxyReq, req, res) => {
-      proxyReq.setHeader('user-agent', 'pods-cdn/1.0')
-      proxyReq.setHeader('authorization', `token ${token}`)
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      printRateLimit(proxyRes)
-      // console.log(`GH API status: ${proxyRes.statusCode}`)
-      if (proxyRes.statusCode == 200 || proxyRes.statusCode == 304) {
-        proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
-      } else {
-        proxyRes.headers['Cache-Control'] = `no-cache`
-      }
-    }
-  })
-}
 
 app.get(`^/${token}/latest/?*`, githubRequestProxy((path, req) => {
     return path.replace(/^\/.*\/latest/, '/contents/Specs')
