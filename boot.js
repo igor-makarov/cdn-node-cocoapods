@@ -31,6 +31,10 @@ module.exports = function (token) {
     let latest = await getLatest()
     for ([prefix, sha] of latest.map(p => [p.name, p.sha])) {
       console.log(`prefix: ${prefix}, sha: ${sha}`)
+      if (shards[prefix] && shards[prefix].sha === sha) {
+        console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
+        continue
+      }
       shards[prefix] = await getTree(prefix, sha)
       console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
     }

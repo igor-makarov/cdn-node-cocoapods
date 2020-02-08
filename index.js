@@ -28,6 +28,7 @@ const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process
 const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
 const githubCDNRequest = require('./githubCDNRequest')(process.env.GH_CDN)
 const boot = require('./boot')(token)
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const app = express()
 app.use(responseTime())
@@ -311,8 +312,16 @@ app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPo
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
 async function finalBoot () {
+  let minWaitTime = 10 * 1000
   while (true) {
+    let startTime = new Date()
     await boot(shards)
+    let elapsed = (new Date()) - startTime
+    if (elapsed < minWaitTime) {
+      let waitTime = minWaitTime - elapsed
+      console.log(`Waiting ${waitTime/1000}s`)
+      await wait(waitTime)
+    }
   }
 }
 
