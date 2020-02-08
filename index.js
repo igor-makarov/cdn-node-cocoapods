@@ -134,16 +134,6 @@ app.get(shardUrlRegex, async (req, res, next) => {
   }
 })
 
-let githubCDNProxyRequest = bottleneck({ maxConcurrent: 50 }).wrap(githubCDNRequest)
-let deprecationRegex = /\s\"deprecated(|_in_favor_of)\":/
-function isDeprecated(body) {
-   if (deprecationRegex.test(body)) {
-     let json = JSON.parse(body)
-     return json.deprecated || json.deprecated_in_favor_of
-   } else {
-     return false
-   }
-}
 app.get(`/${token}/deprecations/:tree_sha/:prefix/:count`, async (req, res, next) => {
   let prefix = req.params.prefix
   let treeSHA = req.params.tree_sha
