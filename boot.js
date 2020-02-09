@@ -33,9 +33,8 @@ module.exports = function (token) {
     result.podspecs = []
     for (entry of json.tree) {
       let pathComponents = entry.path.split('/')
-      if (pathComponents.length == 3) {
+      if (pathComponents.length == 5) {
         pods.add(pathComponents[2])
-      } else if (pathComponents.length == 5) {
         result.podspecs.push([prefix, ...pathComponents].join('/'))
       }
     }
