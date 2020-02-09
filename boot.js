@@ -39,6 +39,7 @@ module.exports = function (token) {
         result.podspecs.push([prefix, ...pathComponents].join('/'))
       }
     }
+    result.pods = [...pods]
     return result
   }
 

@@ -133,44 +133,17 @@ app.get('/deprecation_shard_count', async (req, res, next) => {
 
 app.get('/all_pods.txt', async (req, res, next) => {
   try {
-    let shardSHAParams = {}
-    if (req.headers['if-none-match']) {
-      shardSHAParams.headers = { 'if-none-match': req.headers['if-none-match'] }
-    }
-    let [responseSha, bodySHA] = await githubAPIRequest('latest', shardSHAParams)
-
-    if (responseSha.statusCode != 200 && responseSha.statusCode != 304) {
-      console.log(`error from latest: ${responseSha.statusCode}`)
-      res.setHeader('Cache-Control', 'no-cache')
-      res.sendStatus(403)
-      return
-    }
-
-    if ((responseSha.statusCode == 200 || responseSha.statusCode == 304) && (responseSha.headers['etag'] == req.headers['if-none-match'])) {
+    let allEtag = etag(Object.values(shards).map(s => s.sha).sort().join('\n'))
+    if (req.headers['if-none-match'] && req.headers['if-none-match'] === allEtag) {
       res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
-      res.setHeader('ETag', responseSha.headers['etag'])
+      res.setHeader('ETag', allEtag)
       res.sendStatus(304)
       return
     }
-    // console.log(bodySHA)
-    let shas = JSON.parse(bodySHA).map(s => s.sha)
 
-    let promises = shas.map(async sha => {
-      let [response, body] = await githubAPIRequest(`tree/${sha}`)
-      let json = JSON.parse(body)
-      console.log(`truncated: ${json.truncated}`)
-      let pods = json.tree
-        .map(entry => entry.path.split('/'))
-        .filter(p => p.length == 3)
-        .map(p => p[2])
-      return pods
-    })
-
-    let podsArrays = await Promise.all(promises)
-    let pods = podsArrays.flat().sort()
-
+    let pods = Object.values(shards).map(s => s.pods).flat().sort()
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
-    res.setHeader('ETag', responseSha.headers['etag'])
+    res.setHeader('ETag', allEtag)
     res.send(pods.join('\n'))
   } catch (error) {
     console.log(error)
