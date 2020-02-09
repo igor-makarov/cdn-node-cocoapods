@@ -56,7 +56,6 @@ const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
   try {
     let shardList = shardUrlRegex.exec(req.url).slice(1)
-    let shardTwo = shardList.slice(0, 2)
     let prefix = shardList[0]
     // console.log(`prefix: ${prefix}`)
     let shard = shards[prefix]
@@ -77,7 +76,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 
     // console.log(shard)
     let shardPath = shardList.join('/')
-    let filtered = shard.pods
+    let filtered = shard.podspecs
       .filter(pod => pod.startsWith(shardPath))
       .map(pod => pod.split('/'))
       .map(([,,, n, v]) => { return { name: n, version: v } })

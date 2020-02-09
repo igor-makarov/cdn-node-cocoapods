@@ -29,12 +29,12 @@ module.exports = function (token) {
     let result = {}
     result.sha = json.sha
     result.truncated = json.truncated
-    result.pods = []
+    let pods = new Set()
     result.podspecs = []
     for (entry of json.tree) {
       let pathComponents = entry.path.split('/')
-      if (pathComponents.length == 4) {
-        result.pods.push([prefix, ...pathComponents].join('/'))
+      if (pathComponents.length == 3) {
+        pods.add(pathComponents[2])
       } else if (pathComponents.length == 5) {
         result.podspecs.push([prefix, ...pathComponents].join('/'))
       }
