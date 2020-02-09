@@ -45,10 +45,6 @@ module.exports = function (token) {
 
   async function getDeprecations(prefix, shard) {
     let sha = shard.sha
-    if (shard.canceled) {
-      console.log(`prefix: ${prefix}, sha: ${sha} - deprecations canceled`)
-      return
-    }
 
     let podspecs = shard.podspecs
     // let podspecs = shard.podspecs.slice(0, 1000)
@@ -68,9 +64,6 @@ module.exports = function (token) {
         let encodedPathComponents = ['Specs', ...podspec.split('/')].map(encodeURIComponent)
         let path = encodedPathComponents.join('/')
         let response = await githubCDNProxyRequest(path)
-        if (shard.canceled) {
-          return
-        }
         // console.log(response.httpVersion)
         let body = response.body
         // console.log(`Body: ${body}`)
@@ -84,19 +77,10 @@ module.exports = function (token) {
           console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations`)
         }
       } catch (error) {
-        console.log(error)
+        console.log(`error retrieving podspec ${podspec}: ${error}`)
       }
     })
-    if (shard.canceled) {
-      console.log(`prefix: ${prefix}, sha: ${sha} - deprecations canceled`)
-      return
-    }
     await Promise.all(deprecations)
-   
-    if (shard.canceled) {
-      console.log(`prefix: ${prefix}, sha: ${sha} - deprecations canceled`)
-      return
-    }
 
     console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations - done!`)
     shard.deprecations = [...result].sort()
@@ -117,11 +101,8 @@ module.exports = function (token) {
       // console.log(`prefix: ${prefix}, sha: ${sha}`)
       if (shards[prefix] && shards[prefix].sha === sha) {
         // console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
-        // getDeprecationsLimited(prefix, shards[prefix])
+        getDeprecationsLimited(prefix, shards[prefix])
         continue
-      }
-      if (shards[prefix]) {
-        shards[prefix].canceled = true
       }
       let oldDeprecations = shards[prefix] ? shards[prefix].deprecations : null
 
