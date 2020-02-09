@@ -63,7 +63,12 @@ module.exports = function (token) {
       try {
         let encodedPathComponents = ['Specs', ...podspec.split('/')].map(encodeURIComponent)
         let path = encodedPathComponents.join('/')
-        let response = await githubCDNProxyRequest(path)
+        let response = await githubCDNProxyRequest(path, { 
+          throwHttpErrors: true,
+          retry: {
+            limit: 5
+          }
+        })
         // console.log(response.httpVersion)
         let body = response.body
         // console.log(`Body: ${body}`)
@@ -78,9 +83,16 @@ module.exports = function (token) {
         }
       } catch (error) {
         console.log(`error retrieving podspec ${podspec}: ${error}`)
+        throw error
       }
     })
+
+    try {
     await Promise.all(deprecations)
+    } catch (error) {
+      console.log(`prefix: ${prefix}, sha: ${sha} - error retrieving podspecs!`)
+      return
+    }
 
     console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations - done!`)
     shard.deprecations = [...result].sort()
