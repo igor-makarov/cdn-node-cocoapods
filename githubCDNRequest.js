@@ -1,4 +1,4 @@
-let request = require('./request').http2
+let request = require('./request').http
 let getEnv = require('./getEnv')
 let Bottleneck = require('bottleneck');
 let bottleneck = (args) => new Bottleneck(args)
