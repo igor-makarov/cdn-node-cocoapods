@@ -133,7 +133,7 @@ app.get('/deprecation_shard_count', async (req, res, next) => {
 
 app.get('/all_pods.txt', async (req, res, next) => {
   try {
-    let allEtag = etag(Object.values(shards).map(s => s.sha).sort().join('\n'))
+    let allEtag = `"${Object.values(shards).map(s => s.sha).join('-')}"`
     if (req.headers['if-none-match'] && req.headers['if-none-match'] === allEtag) {
       res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
       res.setHeader('ETag', allEtag)
