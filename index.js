@@ -49,7 +49,7 @@ Array.prototype.flat = function() {
 
 var shards = {}
 function allDeprecatedPodspecs() {
-  return Object.values(shards).map(s => s.deprecations || s.oldDeprecations || []).flat().sort()
+  return Object.values(shards).map(s => s.deprecations || []).flat().sort()
 }
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
@@ -128,7 +128,7 @@ app.get('/deprecated_podspecs.txt', async (req, res, next) => {
 })
 
 app.get('/deprecation_shard_count', async (req, res, next) => {
-  res.send(Object.values(shards).filter(s => !!s.deprecations || !!s.oldDeprecations).length + '')
+  res.send(Object.values(shards).filter(s => !!s.deprecations).length + '')
 })
 
 app.get('/all_pods.txt', async (req, res, next) => {
