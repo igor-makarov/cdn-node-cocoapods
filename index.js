@@ -188,7 +188,7 @@ function proxyTo(url, maxAge = 14400) {
 let ghOriginUrl = 'https://raw.githubusercontent.com/CocoaPods/Specs/master/'
 app.get('/CocoaPods-version.yml', proxyTo(ghOriginUrl, 60 * 60))
 app.get('//CocoaPods-version.yml', proxyTo(ghOriginUrl, 60 * 60))
-// app.get('/Specs/?*', proxyTo(ghOriginUrl, 10 * 60))
+app.get('/Specs/?*', proxyTo(ghOriginUrl, 1 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
