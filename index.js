@@ -48,9 +48,6 @@ Array.prototype.flat = function() {
 }
 
 var shards = {}
-function allDeprecatedPodspecs() {
-  return Object.values(shards).map(s => s.deprecations || []).flat().sort()
-}
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
@@ -108,8 +105,21 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:count`, async (req, res, next
   res.send(resultList.join('\n'))
 })
 
+var oldDeprecationShards = {}
+function allDeprecatedPodspecs() {
+  return Object.values(shards).map(s => {
+    let newDeprecations = s.deprecations || []
+    let oldDeprecations = oldDeprecationShards[s.prefix] || []
+    if (oldDeprecations.length > newDeprecations.length) {
+      oldDeprecationShards[s.prefix] = newDeprecations
+      return newDeprecations
+    } else {
+      return oldDeprecations
+    }
+  }).flat().sort()
+}
+
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
-  // console.log(allDeprecatedPodspecs())
   let list = allDeprecatedPodspecs().join('\n')
   let deprecationShardCount = Object.values(shards).filter(s => !!s.deprecations).length
   let listEtag = etag(list)
