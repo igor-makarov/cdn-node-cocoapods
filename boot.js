@@ -47,6 +47,7 @@ module.exports = function (token) {
     let cached = await otherSelfCDNRequest(`deprecations/${shard.sha}/${prefix}/${shard.podspecs.length}`)
     if (cached.statusCode == 200) {
       shard.deprecations = cached.body.split('\n')
+      console.log(`prefix: ${prefix}, sha: ${shard.sha} - returning cached deprecations`)
       return true
     } else {
       return false
@@ -61,7 +62,6 @@ module.exports = function (token) {
     // let podspecs = shard.podspecs.slice(0, 500)
 
     if (await getDeprecationsFromStorage(prefix, shards)) {
-      console.log(`prefix: ${prefix}, sha: ${shard.sha} - returning cached deprecations`)
       return
     } 
 
