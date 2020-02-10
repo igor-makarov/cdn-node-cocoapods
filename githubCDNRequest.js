@@ -1,5 +1,6 @@
-let request = require('./request').http
 let getEnv = require('./getEnv')
+let isHttp2 = getEnv('GH_CDN_HTTP2') == 'true'
+let request = isHttp2 ? require('./request').http2 : require('./request').http
 let Bottleneck = require('bottleneck');
 let bottleneck = (args) => new Bottleneck(args)
 
