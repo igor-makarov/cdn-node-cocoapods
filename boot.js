@@ -42,6 +42,17 @@ module.exports = function (token) {
     return result
   }
 
+  async function getDeprecationsFromStorage(prefix, shards) {
+    let shard = shards[prefix]
+    let cached = await otherSelfCDNRequest(`deprecations/${shard.sha}/${prefix}/${shard.podspecs.length}`)
+    if (cached.statusCode == 200) {
+      shard.deprecations = cached.body.split('\n')
+      return true
+    } else {
+      return false
+    }
+  }
+
   async function getDeprecations(prefix, shards) {
     let shard = shards[prefix]
     let sha = shard.sha
@@ -49,10 +60,8 @@ module.exports = function (token) {
     let podspecs = shard.podspecs
     // let podspecs = shard.podspecs.slice(0, 500)
 
-    let cached = await otherSelfCDNRequest(`deprecations/${sha}/${prefix}/${podspecs.length}`)
-    if (cached.statusCode == 200) {
-      console.log(`prefix: ${prefix}, sha: ${sha} - returning cached deprecations`)
-      shard.deprecations = cached.body.split('\n')
+    if (await getDeprecationsFromStorage(prefix, shards)) {
+      console.log(`prefix: ${prefix}, sha: ${shard.sha} - returning cached deprecations`)
       return
     } 
 
@@ -97,8 +106,7 @@ module.exports = function (token) {
     console.log(`prefix: ${prefix}, sha: ${sha} - parsed ${count} deprecations - done!`)
     shard.deprecations = [...result].sort()
 
-    let forceCache = await otherSelfCDNRequest(`deprecations/${sha}/${prefix}/${podspecs.length}`)
-    if (forceCache.statusCode == 200) {
+    if (await getDeprecationsFromStorage(prefix, shards)) {
       console.log(`prefix: ${prefix}, sha: ${sha} - deprecations cached`)
       return
     } 
@@ -113,6 +121,7 @@ module.exports = function (token) {
       // console.log(`prefix: ${prefix}, sha: ${sha}`)
       if (shards[prefix] && shards[prefix].sha === sha) {
         // console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
+        await getDeprecationsFromStorage(prefix, shards)
         getDeprecationsLimited(prefix, shards)
         continue
       }
@@ -122,6 +131,7 @@ module.exports = function (token) {
       shards[prefix].oldDeprecations = oldDeprecations
       console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
       modifiedCount += 1
+      await getDeprecationsFromStorage(prefix, shards)
       getDeprecationsLimited(prefix, shards)
     }
     if (modifiedCount == 0) {
