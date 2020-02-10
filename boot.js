@@ -44,6 +44,7 @@ module.exports = function (token) {
 
   async function getDeprecationsFromStorage(prefix, shards) {
     let shard = shards[prefix]
+    console.log(`https://pods-cdn.me/deprecations/${shard.sha}/${prefix}/${shard.podspecs.length}`)
     let cached = await otherSelfCDNRequest(`deprecations/${shard.sha}/${prefix}/${shard.podspecs.length}`)
     if (cached.statusCode == 200) {
       shard.deprecations = cached.body.split('\n')
