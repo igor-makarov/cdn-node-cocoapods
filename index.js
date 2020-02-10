@@ -110,7 +110,7 @@ function allDeprecatedPodspecs() {
   return Object.values(shards).map(s => {
     let newDeprecations = s.deprecations || []
     let oldDeprecations = oldDeprecationShards[s.prefix] || []
-    if (oldDeprecations.length > newDeprecations.length) {
+    if (newDeprecations.length > oldDeprecations.length) {
       oldDeprecationShards[s.prefix] = newDeprecations
       return newDeprecations
     } else {
