@@ -78,7 +78,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
       .map(pod => pod.split('/'))
       .map(([,,, n, v]) => { return { name: n, version: v } })
     let versions = Object.entries(filtered.grouped()).map(([k,v]) => [k, ...v].join('/'))
-    console.log(`Parsed ${shardList}`)
+    // console.log(`Parsed ${shardList}`)
 
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', etag)
