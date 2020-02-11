@@ -128,9 +128,9 @@ module.exports = function (token) {
         continue
       }
       shards[prefix] = await getTree(prefix, sha)
-      console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
+      let deprecationsRetrieved = await getDeprecationsFromStorage(prefix, shards)
+      console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}, deprecations ready: ${deprecationsRetrieved}`)
       modifiedCount += 1
-      await getDeprecationsFromStorage(prefix, shards)
       getDeprecationsLimited(prefix, shards)
     }
     if (modifiedCount == 0) {
