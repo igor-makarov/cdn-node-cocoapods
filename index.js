@@ -107,7 +107,7 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:count`, async (req, res, next
 })
 
 async function getDeprecationSearch(prefix, page) {
-  let response = await githubAPIRequest(`search_deprecations/${prefix}/${page}`, { 
+  let response = await githubAPIRequest(`search_deprecations?path=${prefix}&page=${page}`, { 
     retry: {
       limit: 1,
       statusCodes: [403]
@@ -123,8 +123,8 @@ async function getDeprecationSearch(prefix, page) {
   return [paging, json]
 }
 
-app.get(`/${token}/potential_deprecations/:prefix`, async (req, res, next) => {
-  let prefix = req.params.prefix
+app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
+  let prefix = req.query.path
 
   var podspecList = new Set()
   var paging = { next: 1 }
