@@ -54,6 +54,7 @@ module.exports = function (token) {
     let prefixes = '0123456789abcdef'.split('')
     prefixes.push('1/c/3')
     prefixes.push('c/0/0')
+    var addedDeprecations = 0
     for (prefix of prefixes) {
       let found = await getDeprecationsSearch(prefix)
       let filtered = found.filter(podspec => !deprecations.has(podspec))
@@ -68,8 +69,10 @@ module.exports = function (token) {
       // let deprecated = (await Promise.all(deprecationPromises)).flat()
       let deprecated = found
       for (deprecatedPodspec of deprecated) {
+        addedDeprecations += 1
         deprecations.add(deprecatedPodspec)
       }
     }
+    console.log(`added ${addedDeprecations} deprecations!`)
   }
 }
