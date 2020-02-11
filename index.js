@@ -111,11 +111,11 @@ function allDeprecatedPodspecs() {
     let newDeprecations = s.deprecations || []
     let oldDeprecations = oldDeprecationShards[s.prefix] || []
     if (newDeprecations.length > oldDeprecations.length) {
-      console.log(`shard: ${s.prefix} old: ${oldDeprecations} new: ${newDeprecations}, returning new`)
+      // console.log(`shard: ${s.prefix} old: ${oldDeprecations} new: ${newDeprecations}, returning new`)
       oldDeprecationShards[s.prefix] = newDeprecations
       return newDeprecations
     } else {
-      console.log(`shard: ${s.prefix} old: ${oldDeprecations} new: ${newDeprecations}, returning old`)
+      // console.log(`shard: ${s.prefix} old: ${oldDeprecations} new: ${newDeprecations}, returning old`)
       return oldDeprecations
     }
   }).flat().sort()
