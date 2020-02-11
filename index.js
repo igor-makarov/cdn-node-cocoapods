@@ -24,7 +24,7 @@ const responseTime = require('response-time')
 const etag = require('etag')
 const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
-const indexScanner = require('./boot')(token)
+const indexScanner = require('./indexScanner')(token)
 const deprecationScanner = require('./deprecationScanner')(token)
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
