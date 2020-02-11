@@ -232,8 +232,8 @@ app.get(`^/${token}/tree/:tree_sha`, githubRequestProxy((path, req) => {
   return path.replace(/^\/.*\/tree/, '/repos/CocoaPods/Specs/git/trees') + '?recursive=true'
 }, 7 * 24 * 60 * 60))
 
-app.get(`^/${token}/search_deprecations/:shard/:page`, githubRequestProxy((path, req) => {
-  return `/search/code?q=(deprecated+OR+deprecated_in_favor_of)+path:Specs/${req.params.shard}+language:json+repo:CocoaPods/Specs&per_page=10000&page=${req.params.page}`
+app.get(`^/${token}/search_deprecations`, githubRequestProxy((path, req) => {
+  return `/search/code?q=(deprecated+OR+deprecated_in_favor_of)+path:Specs/${req.query.path}+language:json+repo:CocoaPods/Specs&per_page=10000&page=${req.query.page}`
 }, 60))
 
 app.get(`^/${token}/commit/:commit_sha`, githubRequestProxy((path, req) => {
