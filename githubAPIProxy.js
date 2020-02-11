@@ -10,7 +10,7 @@ function printRateLimit(response) {
 }  
 
 module.exports = function (token) {
-  let ghUrlPrefix = 'https://api.github.com/repos/CocoaPods/Specs'
+  let ghUrlPrefix = 'https://api.github.com'
   return function githubRequestProxy(pathRewrite, maxAge) {
     return proxy({
       target: ghUrlPrefix,
@@ -18,6 +18,7 @@ module.exports = function (token) {
       changeOrigin: true,
       onProxyReq: (proxyReq, req, res) => {
         proxyReq.setHeader('user-agent', 'pods-cdn/1.0')
+        proxyReq.setHeader('accept', 'application/vnd.github.cloak-preview')
         proxyReq.setHeader('authorization', `token ${token}`)
       },
       onProxyRes: (proxyRes, req, res) => {

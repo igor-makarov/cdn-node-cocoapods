@@ -171,11 +171,19 @@ app.get(`^/${token}/keep_alive`, async (req, res, next) => {
 
 const githubRequestProxy = require('./githubAPIProxy')(token)
 app.get(`^/${token}/latest/?*`, githubRequestProxy((path, req) => {
-    return path.replace(/^\/.*\/latest/, '/contents/Specs')
+    return path.replace(/^\/.*\/latest/, '/repos/CocoaPods/Specs/contents/Specs')
 }, 60))
 
 app.get(`^/${token}/tree/:tree_sha`, githubRequestProxy((path, req) => {
-  return path.replace(/^\/.*\/tree/, '/git/trees') + '?recursive=true'
+  return path.replace(/^\/.*\/tree/, '/repos/CocoaPods/Specs/git/trees') + '?recursive=true'
+}, 7 * 24 * 60 * 60))
+
+app.get(`^/${token}/search_deprecations/:page`, githubRequestProxy((path, req) => {
+  return `/search/commits?q=deprecate+repo:CocoaPods/Specs&page=${req.params.page}`
+}, 60))
+
+app.get(`^/${token}/commit/:commit_sha`, githubRequestProxy((path, req) => {
+  return `/repos/CocoaPods/Specs/commits/${req.params.commit_sha}`
 }, 7 * 24 * 60 * 60))
 
 function proxyTo(url, maxAge = 14400) {
