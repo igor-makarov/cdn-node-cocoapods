@@ -179,7 +179,7 @@ app.get(`^/${token}/tree/:tree_sha`, githubRequestProxy((path, req) => {
 }, 7 * 24 * 60 * 60))
 
 app.get(`^/${token}/search_deprecations/:page`, githubRequestProxy((path, req) => {
-  return `/search/code?q=(deprecated+OR+deprecated_in_favor_of)+language:json+repo:CocoaPods/Specs&page=${req.params.page}`
+  return `/search/code?q=(deprecated+OR+deprecated_in_favor_of)+language:json+repo:CocoaPods/Specs&per_page=10000&page=${req.params.page}`
 }, 60))
 
 app.get(`^/${token}/commit/:commit_sha`, githubRequestProxy((path, req) => {
