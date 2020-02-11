@@ -9,7 +9,11 @@ module.exports = function (token) {
   }
   
   async function getTree(prefix, sha) {
-    let response = await githubAPIRequest(`tree/${sha}`) 
+    let response = await githubAPIRequest(`tree/${sha}`)
+    if (response.statusCode != 200) {
+      console.log(`prefix: ${prefix}, sha: ${sha}, error: ${response.statusCode}`)
+      return { truncated: true }
+    }
     let json = JSON.parse(response.body)
 
     let result = {}
