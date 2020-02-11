@@ -22,11 +22,10 @@ const stats = require('./stats')
 const octopage = require('./octopage')
 const responseTime = require('response-time')
 const etag = require('etag')
-const Bottleneck = require('bottleneck');
 const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
-const githubCDNRequest = require('./githubCDNRequest')
-const boot = require('./boot')(token)
+const indexScanner = require('./boot')(token)
+const deprecationScanner = require('./deprecationScanner')(token)
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const app = express()
@@ -49,6 +48,7 @@ Array.prototype.flat = function() {
 }
 
 var shards = {}
+var deprecations = new Set()
 
 const shardUrlRegex = /\/all_pods_versions_(.)_(.)_(.)\.txt/
 app.get(shardUrlRegex, async (req, res, next) => {
@@ -88,22 +88,6 @@ app.get(shardUrlRegex, async (req, res, next) => {
     console.log(error)
     next(error)
   }
-})
-
-app.get(`/${token}/deprecations/:tree_sha/:prefix/:count`, async (req, res, next) => {
-  let prefix = req.params.prefix
-  let treeSHA = req.params.tree_sha
-
-  if (!shards[prefix] || !shards[prefix].deprecations || shards[prefix].sha !== treeSHA) {
-    res.setHeader('Cache-Control', 'no-cache')
-    res.sendStatus(404)
-    return
-  }
-
-  let maxAge = 7 * 24 * 60 * 60
-  let resultList = shards[prefix].deprecations.sort()
-  res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
-  res.send(resultList.join('\n'))
 })
 
 async function getDeprecationSearch(prefix, page) {
@@ -155,42 +139,19 @@ app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
   res.send(resultList.join('\n'))
 })
 
-var oldDeprecationShards = {}
-function allDeprecatedPodspecs() {
-  return Object.values(shards).map(s => {
-    let newDeprecations = s.deprecations || []
-    let oldDeprecations = oldDeprecationShards[s.prefix] || []
-    if (newDeprecations.length > oldDeprecations.length) {
-      // console.log(`shard: ${s.prefix} old: ${oldDeprecations} new: ${newDeprecations}, returning new`)
-      oldDeprecationShards[s.prefix] = newDeprecations
-      return newDeprecations
-    } else {
-      // console.log(`shard: ${s.prefix} old: ${oldDeprecations} new: ${newDeprecations}, returning old`)
-      return oldDeprecations
-    }
-  }).flat().sort()
-}
-
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
-  let list = allDeprecatedPodspecs().join('\n')
-  let deprecationShardCount = Object.values(shards).filter(s => !!s.deprecations).length
+  let list = [...deprecations].sort().join('\n')
   let listEtag = etag(list)
   // console.log(listEtag)
   if (req.headers["if-none-match"] && req.headers["if-none-match"] === listEtag) {
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', listEtag)
-    res.setHeader('X-Deprecation-Shards', deprecationShardCount)
     res.sendStatus(304)
     return
   }
   res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
   res.setHeader('ETag', listEtag)
-  res.setHeader('X-Deprecation-Shards', deprecationShardCount)
   res.send(list)
-})
-
-app.get('/deprecation_shard_count', async (req, res, next) => {
-  res.send(Object.values(shards).filter(s => !!s.deprecations).length + '')
 })
 
 app.get('/all_pods.txt', async (req, res, next) => {
@@ -257,22 +218,26 @@ async function finalBoot () {
     otherSelfCDNRequest('keep_alive')
   }, 30 * 1000)
 
-
-  try {
-    let minWaitTime = 10 * 1000
-    while (true) {
-      let startTime = new Date()
-      await boot(shards)
-      let elapsed = (new Date()) - startTime
-      if (elapsed < minWaitTime) {
-        let waitTime = minWaitTime - elapsed
-        // console.log(`Waiting ${waitTime/1000}s`)
-        await wait(waitTime)
+  async function loop(functionToCall) {
+      let minWaitTime = 10 * 1000
+      while (true) {
+        let startTime = new Date()
+        try {
+          await functionToCall()
+        } catch (error) {
+          console.log(error)
+        }
+        let elapsed = (new Date()) - startTime
+        if (elapsed < minWaitTime) {
+          let waitTime = minWaitTime - elapsed
+          // console.log(`Waiting ${waitTime/1000}s`)
+          await wait(waitTime)
+        }
       }
-    }
-  } catch (error) {
-    console.log(error)
   }
+
+  await Promise.all([loop(async () => await indexScanner(shards)), 
+                     loop(async () => await deprecationScanner(deprecations))])
 }
 
 finalBoot()
