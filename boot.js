@@ -27,6 +27,7 @@ module.exports = function (token) {
     let json = JSON.parse(response.body)
 
     let result = {}
+    result.prefix = prefix
     result.sha = json.sha
     result.truncated = json.truncated
     let pods = new Set()
