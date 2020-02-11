@@ -19,6 +19,7 @@ const express = require('express')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
 const stats = require('./stats')
+const octopage = require('./octopage')
 const responseTime = require('response-time')
 const etag = require('etag')
 const Bottleneck = require('bottleneck');
@@ -102,6 +103,53 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:count`, async (req, res, next
   let maxAge = 7 * 24 * 60 * 60
   let resultList = shards[prefix].deprecations.sort()
   res.setHeader('Cache-Control', `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`)
+  res.send(resultList.join('\n'))
+})
+
+async function getDeprecationSearch(prefix, page) {
+  let response = await githubAPIRequest(`search_deprecations/${prefix}/${page}`, { 
+    retry: {
+      limit: 5,
+      maxRetryAfter: 120,
+      statusCodes: [403]
+    }
+  }) 
+  let json = JSON.parse(response.body)
+  let paging = response.headers.link ? octopage(response.headers.link) : {}
+  if (response.statusCode == 403) {
+    console.log(response.headers)
+  }
+  paging.current = page
+  return [paging, json]
+}
+
+app.get(`/${token}/potential_deprecations/:prefix`, async (req, res, next) => {
+  let prefix = req.params.prefix
+
+  var podspecList = new Set()
+  var paging = { next: 1 }
+  var searchResult = null
+  var etag = null
+  do {
+    [paging, searchResult] = await getDeprecationSearch(prefix, paging.next)
+    etag = `"${searchResult.total_count}"`
+    console.log(`prefix: ${prefix} page: ${paging.current}, items: ${searchResult.items.length}`)
+    if (req.headers['if-none-match'] && req.headers['if-none-match'] == etag && paging.next >= 1) {
+      res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+      res.setHeader('ETag', etag)
+      res.sendStatus(304)
+      return
+    }
+    for (item of searchResult.items) {
+      podspecList.add(item.path)
+      // console.log(item.path)
+    }
+    // await wait(1000)
+  } while (paging.next);
+
+  let resultList = [...podspecList].sort()
+  res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
+  res.setHeader('ETag', etag)
   res.send(resultList.join('\n'))
 })
 
