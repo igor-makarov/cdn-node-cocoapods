@@ -139,7 +139,7 @@ app.get(`/${token}/potential_deprecations/:prefix`, async (req, res, next) => {
     }
   
     etag = `"${searchResult.total_count}"`
-    console.log(`prefix: ${prefix} page: ${paging.current}, items: ${searchResult.items.length}`)
+    console.log(`prefix: ${prefix} total: ${searchResult.total_count} page: ${paging.current}, items: ${searchResult.items.length}`)
     if (req.headers['if-none-match'] && req.headers['if-none-match'] == etag && paging.next >= 1) {
       res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
       res.setHeader('ETag', etag)
