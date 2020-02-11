@@ -107,12 +107,7 @@ app.get(`/${token}/deprecations/:tree_sha/:prefix/:count`, async (req, res, next
 })
 
 async function getDeprecationSearch(prefix, page) {
-  let response = await githubAPIRequest(`search_deprecations?path=${prefix}&page=${page}`, { 
-    retry: {
-      limit: 1,
-      statusCodes: [403]
-    }
-  }) 
+  let response = await githubAPIRequest(`search_deprecations?path=${prefix}&page=${page}`) 
   if (response.statusCode != 200) {
     console.log(response.headers)
     return []
