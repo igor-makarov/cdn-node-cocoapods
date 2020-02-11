@@ -129,7 +129,8 @@ app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
     [paging, searchResult] = await getDeprecationSearch(prefix, paging.next)
     if (!paging) {
       res.setHeader('Cache-Control', 'no-cache')
-      res.sendStatus(404)
+      res.setHeader('retry-after', '60')
+      res.sendStatus(403)
       return
     }
   
