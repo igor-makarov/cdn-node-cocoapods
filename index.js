@@ -125,7 +125,7 @@ app.get('/deprecated_podspecs.txt', async (req, res, next) => {
   let list = allDeprecatedPodspecs().join('\n')
   let deprecationShardCount = Object.values(shards).filter(s => !!s.deprecations).length
   let listEtag = etag(list)
-  console.log(listEtag)
+  // console.log(listEtag)
   if (req.headers["if-none-match"] && req.headers["if-none-match"] === listEtag) {
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', listEtag)
