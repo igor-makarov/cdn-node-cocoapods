@@ -67,7 +67,7 @@ module.exports = function (token) {
       // })
 
       // let deprecated = (await Promise.all(deprecationPromises)).flat()
-      let deprecated = found
+      let deprecated = filtered
       for (deprecatedPodspec of deprecated) {
         addedDeprecations += 1
         deprecations.add(deprecatedPodspec)
