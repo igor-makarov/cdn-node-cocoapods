@@ -116,8 +116,9 @@ async function getDeprecationSearch(prefix, page) {
   }) 
   let json = JSON.parse(response.body)
   let paging = response.headers.link ? octopage(response.headers.link) : {}
-  if (response.statusCode == 403) {
+  if (response.statusCode != 200) {
     console.log(response.headers)
+    return []
   }
   paging.current = page
   return [paging, json]
@@ -132,6 +133,12 @@ app.get(`/${token}/potential_deprecations/:prefix`, async (req, res, next) => {
   var etag = null
   do {
     [paging, searchResult] = await getDeprecationSearch(prefix, paging.next)
+    if (!paging) {
+      res.setHeader('Cache-Control', 'no-cache')
+      res.sendStatus(404)
+      return
+    }
+  
     etag = `"${searchResult.total_count}"`
     console.log(`prefix: ${prefix} page: ${paging.current}, items: ${searchResult.items.length}`)
     if (req.headers['if-none-match'] && req.headers['if-none-match'] == etag && paging.next >= 1) {
