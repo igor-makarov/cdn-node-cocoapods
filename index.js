@@ -113,12 +113,12 @@ async function getDeprecationSearch(prefix, page) {
       statusCodes: [403]
     }
   }) 
-  let json = JSON.parse(response.body)
-  let paging = response.headers.link ? octopage(response.headers.link) : {}
   if (response.statusCode != 200) {
     console.log(response.headers)
     return []
   }
+  let json = JSON.parse(response.body)
+  let paging = response.headers.link ? octopage(response.headers.link) : {}
   paging.current = page
   return [paging, json]
 }
