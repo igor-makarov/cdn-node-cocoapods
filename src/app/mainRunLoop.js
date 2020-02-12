@@ -1,7 +1,7 @@
 let getEnv = require('../util/getEnv')
 let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('GH_TOKEN'), getEnv('SELF_CDN_URL'))
-let indexScanner = require('../scanners/indexScanner')(getEnv('GH_TOKEN'))
-let deprecationScanner = require('../scanners/deprecationScanner')(getEnv('GH_TOKEN'))
+let indexScanner = require('../scanners/indexScanner')
+let deprecationScanner = require('../scanners/deprecationScanner')
 let wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = async function (shards, deprecations) {
