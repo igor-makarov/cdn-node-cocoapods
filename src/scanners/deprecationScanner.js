@@ -1,6 +1,6 @@
 let getEnv = require('../util/getEnv')
 let prefixes = getEnv('DEPRECATION_SEARCH_PREFIXES').split(' ')
-let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('GH_TOKEN'), getEnv('SELF_CDN_URL'))
+let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('SELF_CDN_URL'))
 
 async function getDeprecationsSearch(prefix) {
   let response = await otherSelfCDNRequest(`potential_deprecations?path=${prefix}`, { 

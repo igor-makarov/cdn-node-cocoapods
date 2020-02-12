@@ -1,5 +1,5 @@
 let getEnv = require('../util/getEnv')
-let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('GH_TOKEN'), getEnv('SELF_CDN_URL'))
+let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('SELF_CDN_URL'))
 let indexScanner = require('../scanners/indexScanner')
 let deprecationScanner = require('../scanners/deprecationScanner')
 let wait = ms => new Promise(resolve => setTimeout(resolve, ms));

@@ -1,6 +1,8 @@
+let getEnv = require('../util/getEnv')
 let request = require('../util/request').http
+let token = getEnv('GH_TOKEN')
 
-module.exports = function (token, cdnURL) {
+module.exports = function (cdnURL) {
   if (!cdnURL) {
     throw new Error('No CDN URL provided')
   }

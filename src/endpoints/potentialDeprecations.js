@@ -1,5 +1,5 @@
 let getEnv = require('../util/getEnv')
-let githubAPIRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('GH_TOKEN'), getEnv('GITHUB_API_SELF_CDN_URL'))
+let githubAPIRequest = require('../api/tokenProtectedRequestToSelf')(getEnv('GITHUB_API_SELF_CDN_URL'))
 let octopage = require('../util/octopage')
 
 async function getDeprecationSearch(prefix, page) {
