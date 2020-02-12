@@ -6,7 +6,7 @@ let responseTime = require('response-time')
 let etag = require('etag')
 let stats = require('../util/stats')
 let potentialDeprecations = require('../endpoints/potentialDeprecations')
-let githubRequestProxy = require('../api/githubAPIProxy')(getEnv('GH_TOKEN'))
+let githubRequestProxy = require('../api/githubAPIProxy')
 
 Array.prototype.grouped = function() {
   return this.reduce(function(groups, item) {
