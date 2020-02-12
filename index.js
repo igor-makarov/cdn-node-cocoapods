@@ -126,7 +126,7 @@ app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
       res.sendStatus(304)
       return
     }
-    for (item of searchResult.items) {
+    for (let item of searchResult.items) {
       podspecList.add(item.path)
       // console.log(item.path)
     }
@@ -237,7 +237,7 @@ async function finalBoot () {
   }
 
   await Promise.all([loop(async () => await indexScanner(shards)), 
-                     loop(async () => await deprecationScanner(deprecations))])
+                    loop(async () => await deprecationScanner(deprecations))])
 }
 
 finalBoot()

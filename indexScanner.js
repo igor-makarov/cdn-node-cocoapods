@@ -24,7 +24,7 @@ module.exports = function (token) {
     result.truncated = json.truncated
     let pods = new Set()
     result.podspecs = []
-    for (entry of json.tree) {
+    for (let entry of json.tree) {
       let pathComponents = entry.path.split('/')
       if (pathComponents.length == 5) {
         pods.add(pathComponents[2])
@@ -38,7 +38,7 @@ module.exports = function (token) {
   return async function(shards) { 
     let latest = await getLatest()
     var modifiedCount = 0
-    for ([prefix, sha] of latest.map(p => [p.name, p.sha])) {
+    for (let [prefix, sha] of latest.map(p => [p.name, p.sha])) {
       // console.log(`prefix: ${prefix}, sha: ${sha}`)
       if (shards[prefix] && shards[prefix].sha === sha) {
         // console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)

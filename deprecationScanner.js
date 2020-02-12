@@ -20,13 +20,13 @@ module.exports = function (token) {
 
   return async function scanDeprecations(deprecations) {
     var addedDeprecations = 0
-    for (prefix of prefixes) {
+    for (let prefix of prefixes) {
       let found = await getDeprecationsSearch(prefix)
       let filtered = found.filter(podspec => !deprecations.has(podspec))
       if (filtered.length > 0 || found.length == 0) {
         console.log(`prefix: ${prefix} potential deprecations: ${filtered.length}/${found.length}`)
       }
-      for (deprecatedPodspec of filtered) {
+      for (let deprecatedPodspec of filtered) {
         addedDeprecations += 1
         deprecations.add(deprecatedPodspec)
       }
