@@ -10,18 +10,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bottleneck": "^2.19.5",
     "compression": "^1.7.4",
     "dotenv": "^8.2.0",
     "etag": "^1.8.1",
     "express": "^4.17.1",
     "got": "^10.5.2",
     "http-proxy-middleware": "^0.20.0",
-    "http2-wrapper": "^1.0.0-beta.3",
     "log-timestamp": "^0.3.0",
-    "pify": "^4.0.1",
     "response-time": "^2.3.2",
-    "shelljs": "^0.8.3",
     "span": "0.0.6"
   }
 }
