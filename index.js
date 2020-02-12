@@ -133,15 +133,18 @@ app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
 })
 
 app.get('/deprecated_podspecs.txt', async (req, res, next) => {
-  let list = [...deprecations].sort().join('\n')
+  let deprecationsSorted = [...deprecations].sort()
+  let list = deprecationsSorted.join('\n')
   let listEtag = etag(list)
   // console.log(listEtag)
   if (req.headers["if-none-match"] && req.headers["if-none-match"] === listEtag) {
+    res.setHeader('x-deprecated-podspecs', deprecationsSorted.length)
     res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
     res.setHeader('ETag', listEtag)
     res.sendStatus(304)
     return
   }
+  res.setHeader('x-deprecated-podspecs', deprecationsSorted.length)
   res.setHeader('Cache-Control', 'public,stale-while-revalidate=10,max-age=60,s-max-age=60')
   res.setHeader('ETag', listEtag)
   res.send(list)
