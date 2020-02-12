@@ -2,7 +2,7 @@
 module.exports = function (token) {
   let getEnv = require('../util/getEnv')
   let prefixes = getEnv('DEPRECATION_SEARCH_PREFIXES').split(' ')
-  let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
+  let otherSelfCDNRequest = require('../api/tokenProtectedRequestToSelf')(token, getEnv('SELF_CDN_URL'))
 
   async function getDeprecationsSearch(prefix) {
     let response = await otherSelfCDNRequest(`potential_deprecations?path=${prefix}`, { 
