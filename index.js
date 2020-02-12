@@ -21,10 +21,6 @@ const compression = require('compression')
 const stats = require('./src/util/stats')
 const responseTime = require('response-time')
 const etag = require('etag')
-const otherSelfCDNRequest = require('./src/api/tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
-const indexScanner = require('./src/scanners/indexScanner')(token)
-const deprecationScanner = require('./src/scanners/deprecationScanner')(token)
-const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const app = express()
 app.use(responseTime())
@@ -163,31 +159,5 @@ app.get('/Specs/?*', proxyTo(ghOriginUrl, 1 * 60))
 app.get('/', (req, res) => res.redirect(301, 'https://blog.cocoapods.org/CocoaPods-1.7.2/'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
-async function finalBoot () {
-  setInterval(() => {
-    otherSelfCDNRequest('keep_alive')
-  }, 30 * 1000)
-
-  async function loop(intervalSeconds, functionToCall) {
-      let minWaitTime = intervalSeconds * 1000
-      while (true) {
-        let startTime = new Date()
-        try {
-          await functionToCall()
-        } catch (error) {
-          console.log(error)
-        }
-        let elapsed = (new Date()) - startTime
-        if (elapsed < minWaitTime) {
-          let waitTime = minWaitTime - elapsed
-          // console.log(`Waiting ${waitTime/1000}s`)
-          await wait(waitTime)
-        }
-      }
-  }
-
-  await Promise.all([loop(10, async () => await indexScanner(shards)), 
-                     loop(30, async () => await deprecationScanner(deprecations))])
-}
-
-finalBoot()
+let runLoop = require('./src/app/mainRunLoop')
+runLoop(shards, deprecations)
