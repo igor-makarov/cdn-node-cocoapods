@@ -214,8 +214,8 @@ async function finalBoot () {
     otherSelfCDNRequest('keep_alive')
   }, 30 * 1000)
 
-  async function loop(functionToCall) {
-      let minWaitTime = 10 * 1000
+  async function loop(intervalSeconds, functionToCall) {
+      let minWaitTime = intervalSeconds * 1000
       while (true) {
         let startTime = new Date()
         try {
@@ -232,8 +232,8 @@ async function finalBoot () {
       }
   }
 
-  await Promise.all([loop(async () => await indexScanner(shards)), 
-                    loop(async () => await deprecationScanner(deprecations))])
+  await Promise.all([loop(10, async () => await indexScanner(shards)), 
+                     loop(30, async () => await deprecationScanner(deprecations))])
 }
 
 finalBoot()
