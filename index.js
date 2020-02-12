@@ -193,10 +193,6 @@ app.get(`^/${token}/search_deprecations`, githubRequestProxy((path, req) => {
   return `/search/code?q=(deprecated+OR+deprecated_in_favor_of)+path:Specs/${req.query.path}+language:json+repo:CocoaPods/Specs&per_page=10000&page=${req.query.page}`
 }, 60))
 
-app.get(`^/${token}/commit/:commit_sha`, githubRequestProxy((path, req) => {
-  return `/repos/CocoaPods/Specs/commits/${req.params.commit_sha}`
-}, 7 * 24 * 60 * 60))
-
 function proxyTo(url, maxAge = 14400) {
   return proxy({ target: url, 
                         changeOrigin: true,
