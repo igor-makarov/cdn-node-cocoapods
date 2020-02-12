@@ -10,7 +10,7 @@ let githubRequestProxy = require('../api/githubAPIProxy')(getEnv('GH_TOKEN'))
 
 Array.prototype.grouped = function() {
   return this.reduce(function(groups, item) {
-    const val = item.name
+    let val = item.name
     groups[val] = groups[val] || []
     groups[val].push(item.version)
     return groups
@@ -130,12 +130,13 @@ module.exports = function (shards, deprecations) {
   }, 60, false))
 
   function proxyTo(url, maxAge = 14400) {
-    return proxy({ target: url, 
-                          changeOrigin: true,
-                          onProxyRes: (proxyRes, req, res) => {
-                            proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
-                          }
-                        })
+    return proxy({ 
+      target: url, 
+      changeOrigin: true,
+      onProxyRes: (proxyRes, req, res) => {
+        proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
+      }
+    })
   }
 
   let ghOriginUrl = 'https://raw.githubusercontent.com/CocoaPods/Specs/master/'
