@@ -9,16 +9,18 @@ module.exports = function (token) {
   }
   
   async function getTree(prefix, sha) {
+    let result = {}
+    result.prefix = prefix
+    result.sha = sha
+
     let response = await githubAPIRequest(`tree/${sha}`)
     if (response.statusCode != 200) {
       console.log(`prefix: ${prefix}, sha: ${sha}, error: ${response.statusCode}`)
-      return { truncated: true }
+      result.truncated = true
+      return result
     }
     let json = JSON.parse(response.body)
 
-    let result = {}
-    result.prefix = prefix
-    result.sha = json.sha
     result.truncated = json.truncated
     let pods = new Set()
     result.podspecs = []
@@ -42,8 +44,9 @@ module.exports = function (token) {
         // console.log(`prefix: ${prefix}, sha: ${sha} - unmodified, skipping!`)
         continue
       }
-      shards[prefix] = await getTree(prefix, sha)
-      console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shards[prefix].truncated}`)
+      let shard = await getTree(prefix, sha)
+      console.log(`prefix: ${prefix}, sha: ${sha} - done, truncated: ${shard.truncated}`)
+      shards[prefix] = shard
       modifiedCount += 1
     }
     if (modifiedCount == 0) {
