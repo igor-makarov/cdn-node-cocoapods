@@ -93,7 +93,7 @@ app.get(shardUrlRegex, async (req, res, next) => {
 async function getDeprecationSearch(prefix, page) {
   let response = await githubAPIRequest(`search_deprecations?path=${prefix}&page=${page}`) 
   if (response.statusCode != 200) {
-    console.log(response.headers)
+    console.log(`deprecations search error: ${response.statusCode}`)
     return []
   }
   let json = JSON.parse(response.body)
