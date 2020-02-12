@@ -1,4 +1,4 @@
-let request = require('./request').http
+let request = require('../util/request').http
 
 module.exports = function (token, cdnURL) {
   if (!cdnURL) {

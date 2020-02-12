@@ -1,6 +1,6 @@
 
 module.exports = function (token) {
-  let githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
+  let githubAPIRequest = require('../api/tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
 
   async function getLatest() {
     let response = await githubAPIRequest('latest')

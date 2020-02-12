@@ -18,14 +18,14 @@ if (!port) {
 const express = require('express')
 const proxy = require('http-proxy-middleware')
 const compression = require('compression')
-const stats = require('./stats')
-const octopage = require('./octopage')
+const stats = require('./src/util/stats')
+const octopage = require('./src/util/octopage')
 const responseTime = require('response-time')
 const etag = require('etag')
-const githubAPIRequest = require('./tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
-const otherSelfCDNRequest = require('./tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
-const indexScanner = require('./indexScanner')(token)
-const deprecationScanner = require('./deprecationScanner')(token)
+const githubAPIRequest = require('./src/api/tokenProtectedRequestToSelf')(token, process.env.GITHUB_API_SELF_CDN_URL)
+const otherSelfCDNRequest = require('./src/api/tokenProtectedRequestToSelf')(token, process.env.SELF_CDN_URL)
+const indexScanner = require('./src/scanners/indexScanner')(token)
+const deprecationScanner = require('./src/scanners/deprecationScanner')(token)
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const app = express()
@@ -176,7 +176,7 @@ app.get(`^/${token}/keep_alive`, async (req, res, next) => {
   res.send('keep-alive')
 })
 
-const githubRequestProxy = require('./githubAPIProxy')(token)
+const githubRequestProxy = require('./src/api/githubAPIProxy')(token)
 app.get(`^/${token}/latest/?*`, githubRequestProxy((path, req) => {
     return path.replace(/^\/.*\/latest/, '/repos/CocoaPods/Specs/contents/Specs')
 }, 60))
