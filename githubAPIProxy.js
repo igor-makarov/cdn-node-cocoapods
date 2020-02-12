@@ -11,7 +11,7 @@ function printRateLimit(response) {
 
 module.exports = function (token) {
   let ghUrlPrefix = 'https://api.github.com'
-  return function githubRequestProxy(pathRewrite, maxAge) {
+  return function githubRequestProxy(pathRewrite, maxAge, staleWhileRevalidate = true) {
     return proxy({
       target: ghUrlPrefix,
       pathRewrite: pathRewrite,
@@ -25,7 +25,7 @@ module.exports = function (token) {
         printRateLimit(proxyRes)
         // console.log(`GH API status: ${proxyRes.statusCode}`)
         if (proxyRes.statusCode == 200 || proxyRes.statusCode == 304) {
-          proxyRes.headers['Cache-Control'] = `public,stale-while-revalidate=10,max-age=${maxAge},s-max-age=${maxAge}`
+          proxyRes.headers['Cache-Control'] = `public,${staleWhileRevalidate ? 'stale-while-revalidate=10,' : ''}max-age=${maxAge},s-max-age=${maxAge}`
         } else {
           proxyRes.headers['Cache-Control'] = `no-cache`
         }

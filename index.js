@@ -184,7 +184,7 @@ app.get(`^/${token}/tree/:tree_sha`, githubRequestProxy((path, req) => {
 
 app.get(`^/${token}/search_deprecations`, githubRequestProxy((path, req) => {
   return `/search/code?q=(deprecated+OR+deprecated_in_favor_of)+path:Specs/${req.query.path}+language:json+repo:CocoaPods/Specs&per_page=10000&page=${req.query.page}`
-}, 60))
+}, 60, false))
 
 function proxyTo(url, maxAge = 14400) {
   return proxy({ target: url, 
