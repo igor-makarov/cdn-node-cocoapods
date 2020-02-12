@@ -103,12 +103,12 @@ async function getDeprecationSearch(prefix, page) {
 }
 
 app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
+  let maxAge = 5 * 60
   let prefix = req.query.path
 
   var podspecList = new Set()
   var paging = { next: 1 }
   var searchResult = null
-  var etag = null
   do {
     [paging, searchResult] = await getDeprecationSearch(prefix, paging.next)
     if (!paging) {
@@ -118,14 +118,8 @@ app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
       return
     }
   
-    etag = `"${searchResult.total_count}"`
     console.log(`prefix: ${prefix} total: ${searchResult.total_count} page: ${paging.current}, items: ${searchResult.items.length}`)
-    if (req.headers['if-none-match'] && req.headers['if-none-match'] == etag && paging.next >= 1) {
-      res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
-      res.setHeader('ETag', etag)
-      res.sendStatus(304)
-      return
-    }
+
     for (let item of searchResult.items) {
       podspecList.add(item.path)
       // console.log(item.path)
@@ -134,8 +128,7 @@ app.get(`/${token}/potential_deprecations`, async (req, res, next) => {
   } while (paging.next);
 
   let resultList = [...podspecList].sort()
-  res.setHeader('Cache-Control', 'public,max-age=60,s-max-age=60')
-  res.setHeader('ETag', etag)
+  res.setHeader('Cache-Control', `public,max-age=${maxAge},s-max-age=${maxAge}`)
   res.send(resultList.join('\n'))
 })
 
