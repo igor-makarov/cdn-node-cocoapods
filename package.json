@@ -14,7 +14,7 @@
     "dotenv": "^8.2.0",
     "etag": "^1.8.1",
     "express": "^4.17.1",
-    "got": "^10.5.2",
+    "got": "^12.5.3",
     "http-proxy-middleware": "^0.20.0",
     "log-timestamp": "^0.3.0",
     "response-time": "^2.3.2",
